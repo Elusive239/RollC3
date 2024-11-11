@@ -6,10 +6,15 @@ import std::collections::list;
 fn int main(String[] args)
 {
 	io::printn("Hello, World!");
-	DiceResult result = roll(902, 100);
+	DiceResult result = roll_xy(902, 100);
 	result.keep_more(90);
 	io::printfn("%s, rolled = %d, len = %d", result, result.num_rolls, result.rolled_len);
 	io::printfn("%s, rolled = %d, len = %d", result.print_friendly(5, allocator: allocator::temp()), result.num_rolls, result.rolled_len);
+
+	MultiDiceResult results = roll_xyz(6, 20, 4);
+	io::printfn("%s", results);
+	for(int i = 0; i < results.len; i++) results[i].free();
+	allocator::free(allocator::heap(), results);
 	result.free();
 	return 0;
 }
@@ -155,7 +160,7 @@ fn void DiceResult.keep_less(&self, int v){
 
 def ResultList = List(<int>);
 
-fn DiceResult roll(int x, int y, bool explode = false, Allocator allocator = allocator::heap()){
+fn DiceResult roll_xy(int x, int y, bool explode = false, Allocator allocator = allocator::heap()){
 	DiceResult result;// = {x, y, 0};
 	result.num_rolls = x;
 	result.max_value = y;
@@ -169,4 +174,23 @@ fn DiceResult roll(int x, int y, bool explode = false, Allocator allocator = all
 	result.rolled = results.to_new_array(allocator);
 	result.rolled_len = result.rolled.len;
 	return result;
+}
+
+def MultiDiceResult = DiceResult[];
+
+fn MultiDiceResult roll_xyz(int x, int y, int z, bool explode = false, Allocator allocator = allocator::heap()){
+	MultiDiceResult results = allocator::new_array(allocator, DiceResult, z);
+	for(int i = 0; i < z; i++){
+		results[i] = roll_xy(x, y, explode, allocator);
+	}
+	return results;
+}
+
+fn int[] MultiDiceResult.sum(&self, Allocator allocator = allocator::heap()){
+	int[] s = allocator::new_array(allocator, int, self.len);
+	for(int i =0; i < s.len; i++) {
+		DiceResult result = (*self)[i];
+		s[i] = result.sum();
+	}
+	return s;
 }
