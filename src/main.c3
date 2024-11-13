@@ -4,8 +4,9 @@ import std::io;
 
 fn int main(String[] args)
 {
-	DiceResult result = dice::roll_x(32);
-	io::printfn("%s", result);
+	// DiceResult result = dice::roll_x(32);
+	// io::printfn("%s", result);
+	roll20::test();
 	return 0;
 }
 
