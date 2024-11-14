@@ -7,7 +7,7 @@ import std::io;
 def DiceRolls = List(<DiceResult>);
 
 fn void test(){
-	const String ROLL = "1d20";
+	const String ROLL = "1d20 / 1d10 + 1";
 	Token[] tokens = tokenize(ROLL);
 	io::printfn("%s", tokens);
 	DiceResult[] fin = interperet(tokens);
@@ -17,6 +17,7 @@ fn void test(){
 fn DiceResult[] interperet(Token[] tokens){
 	DiceRolls rolls; defer rolls.free();
 	for(int i =0; i < tokens.len; i++){
+		io::printfn("Current token %d: {%s, %s}",i, tokens[i], tokens[i].type);
 		if(tokens[i].type == TokenType.NUMBER){
 			int x = tokens[i++].number;
 			if(i < tokens.len && tokens[i].type == TokenType.TEXT && tokens[i].text == "d"){
@@ -37,7 +38,23 @@ fn DiceResult[] interperet(Token[] tokens){
 			interperet_inner(&i, &rolls, tokens, TokenType.OPENING_PARENTHESIS, TokenType.CLOSING_PARENTHESIS);
 		}else if(tokens[i].type == TokenType.OPENING_BRACE){
 			interperet_inner(&i, &rolls, tokens, TokenType.OPENING_BRACE, TokenType.CLOSING_BRACE);
-		}
+		}else if(tokens[i].type == TokenType.MATH_OPERATOR){
+			io::printfn("Math Operator!");
+			DiceResult[] next_rolls = interperet(tokens[i+1..]);
+			if(tokens[i].operator == math::ADD || tokens[i].operator == math::SUB ){
+				if(tokens[i].operator == math::SUB){next_rolls[0].results[0] *= -1;}
+				foreach(r : next_rolls) rolls.push(r);
+			}else{
+				int right;
+				foreach(r : next_rolls) right += r.evaluate();
+				for(int z =0; z < rolls.last()!!.results.len; z++){
+					if(tokens[i].operator == math::MUL) rolls.last()!!.results[z] *= right;
+					if(tokens[i].operator == math::DIV) rolls.last()!!.results[z] /= right;
+					if(tokens[i].operator == math::MOD) rolls.last()!!.results[z] %= right;
+				}
+			}
+			i = tokens.len;
+		}else if(tokens[i].type == TokenType.TEXT){continue;}
 	}
 	return rolls.to_new_array();
 }
@@ -59,7 +76,7 @@ macro interperet_inner(int* xi, DiceRolls* rolls, Token[] tokens, TokenType open
 macro interperet_dice(int x, int* xi, DiceRolls* rolls, Token[] tokens){
 	int i= (*xi)+1;
 	if(tokens[i].type == TokenType.NUMBER){ 
-		int y = tokens[i++].number;
+		int y = tokens[i].number;
 		if( i < tokens.len && tokens[i].type == TokenType.EXPLODE){
 			rolls.push(dice::roll_x(x, y, true));
 			i++;
@@ -88,7 +105,7 @@ fn Token[] tokenize(String text){
 			token.type = TokenType.TEXT;
 			buffer.clear();
 			tokens.push(token);
-			token = {};
+			
 		}else if(text[index].is_digit()){
 			while(index < text.len && (text[index].is_digit() || text[index] == '.')){
 				// io::printfn("%c", text[index]);
@@ -99,7 +116,6 @@ fn Token[] tokenize(String text){
 			token.type = TokenType.NUMBER;
 			buffer.clear();
 			tokens.push(token);
-			token = {};
 		}else if (text[index] == '['){
 			index++;
 			if(text[index] == '['){
@@ -112,7 +128,7 @@ fn Token[] tokenize(String text){
 				token.type = TokenType.OPENING_BRACKET;
 				tokens.push(token);
 			}
-			token = {};
+			
 		}else if (text[index] == ']' && text[index+1] == ']'){
 			index++;
 			if(text[index] == ']'){
@@ -125,32 +141,33 @@ fn Token[] tokenize(String text){
 				token.type = TokenType.CLOSING_BRACKET;
 				tokens.push(token);
 			}
-			token = {};
+			
 		}else if(text[index] == '('){
 			index++;
 			token.text = "(";
 			token.type = TokenType.OPENING_PARENTHESIS;
 			tokens.push(token);
-			token = {};
+			
 		}else if(text[index] == ')'){
 			index++;
 			token.text = ")";
 			token.type = TokenType.CLOSING_PARENTHESIS;
 			tokens.push(token);
-			token = {};
+			
 		}else if(text[index] == '{'){
 			index++;
 			token.text = "{";
 			token.type = TokenType.OPENING_BRACE;
 			tokens.push(token);
-			token = {};
+			
 		}else if(text[index] == '}'){
 			index++;
 			token.text = "}";
 			token.type = TokenType.CLOSING_BRACE;
 			tokens.push(token);
-			token = {};
+			
 		}else if(text[index] == '+' || text[index] == '-' || text[index] == '*' || text[index] == '/' || text[index] == '%'){
+			io::printfn("PARSE OPERATOR");
 			switch(text[index++]){
 				case '+': token.operator = math::ADD;
 				case '-': token.operator = math::SUB;
@@ -158,23 +175,27 @@ fn Token[] tokenize(String text){
 				case '/': token.operator = math::DIV;
 				case '%': token.operator = math::MOD;
 			}
-			token.type = TokenType.OPERATOR;
+			token.type = TokenType.MATH_OPERATOR;
 			tokens.push(token);
-			token = {};
+			
 		}else if (text[index] == '!'){
 			index++;
 			token.type = TokenType.EXPLODE;
 			tokens.push(token);
-			token = {};
+			
 		}
+		token = {};
 		// index++;
 	}
+	// foreach(i, tok : tokens){
+	// 	io::printfn("Current token %d: {%s, %s}",i, tok, tok.type);
+	// }
 	return tokens.to_new_array();
 }
 
 
 enum TokenType{
-	TEXT, NUMBER, OPERATOR, 
+	TEXT, NUMBER, MATH_OPERATOR, 
 	OPENING_DOUBLE_BRACKETS, CLOSING_DOUBLE_BRACKETS, 	//[[]] 
 	OPENING_BRACKET, CLOSING_BRACKET,					//[]
 	OPENING_PARENTHESIS, CLOSING_PARENTHESIS, 			//()
@@ -193,7 +214,7 @@ struct Token (Printable){
 
 fn String Token.to_string(&self, Allocator allocator) @dynamic{
 	switch(self.type){
-		case TokenType.OPERATOR: return string::format("%d", self.operator, allocator: allocator); 
+		case TokenType.MATH_OPERATOR: return string::format("%d", self.operator, allocator: allocator); 
 		case TokenType.NUMBER: return string::format("%d", self.number, allocator: allocator); 
 		case TokenType.OPENING_DOUBLE_BRACKETS: return "[[";// break;
 		case TokenType.CLOSING_DOUBLE_BRACKETS: return "]]";
