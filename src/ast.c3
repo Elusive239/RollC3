@@ -133,6 +133,7 @@ interface Roll {
 	fn Result roll();
 	fn String string();
     fn int modifier();
+    fn bool is_group();
 }
 
 // Result is a collection of die rolls and a count of successes
@@ -167,7 +168,7 @@ struct DiceRoll {
 	RerollOp[] rerolls;
 	SortType sort;
 }
-
+fn bool DiceRoll.is_group(DiceRoll dr) => false;
 fn int DiceRoll.modifier(DiceRoll dr) => dr.modifier;
 
 // roll gets the results of rolling the dice that make up a dice roll
@@ -309,6 +310,7 @@ struct GroupedRoll {
 	bool negative;
 }
 
+fn bool GroupedRoll.is_group(GroupedRoll gr) => true;
 fn int GroupedRoll.modifier(GroupedRoll gr) => gr.modifier;
 
 // roll gets the results of rolling the dice that make up a dice roll
