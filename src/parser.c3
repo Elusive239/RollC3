@@ -80,6 +80,7 @@ fn Parser* new_parser(InStream* r) {
 // Parse parses a Roll statement.
 fn RollAndError Parser.parse(Parser* p) {
 	// First token should be a NUM or a DIE
+	// io::printfn("Hi!");
     TokenAndLit tlit = p.scan_ignore_whitespace();
 	RollAndError re = p.parse_roll(tlit.first, tlit.second, false);
 	return re;
@@ -191,7 +192,6 @@ fn RollAndError Parser.parse_grouped_roll(Parser* p, bool grouped) {
         // If we've ended up with a dummy roll for some reason, don't add it
 		if (re.first != null) {
             rolls.push(*re.first);
-			// roll.Rolls = append(roll.Rolls, r)
 		}
     }
     roll.rolls = rolls.to_new_array(allocator::temp());
@@ -199,305 +199,216 @@ fn RollAndError Parser.parse_grouped_roll(Parser* p, bool grouped) {
 }
 
 // parse_dice_roll parses a DiceRoll statement
-fn RollAndError Parser.parse_dice_roll(Parser* p, bool grouped) {
-    DiceRoll* roll = allocator::new(allocator::temp(), DiceRoll);
-    TokenAndLit tlit = {p.buf.tok, p.buf.lit};
+fn RollAndError Parser.parse_dice_roll(Parser* p, bool grouped)  {
+	DiceRoll* roll = mem::new(DiceRoll);
+	RollError err;
+	TokenAndLit tlit;
+
 
 	// If NUM, we store it as the multiplier, else we use 1
 	if (tlit.first == NUM ){
 		roll.multiplier = tlit.second.to_int()!!;
 		tlit = p.scan_ignore_whitespace();
 		if (tlit.first != DIE) {
-			return {null, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
+			return {null, new_error_s(UNEXPECTED_TOKEN,tlit.second)};
 		}
 	} else {
 		roll.multiplier = 1;
-	}   
-    RollAndError re; //= p.parse_die(tlit.second);
+	}
+
+	Die die = p.parse_die(tlit.second);
+	roll.die = die;
 	// We will have a DIE token here, so parse it
-	if (re.second.code != 0) {
-		return {null, re.second};
+	if( err.code == 0) {
+		return {null, err};
 	}
 
 	// Next we should loop over all our modifiers and total them up
 	int mod;
 	Token lastTok;
-    RollError err;
-    List(<RerollOp>) rolls; defer rolls.free();
+	List(<RerollOp>) rerolls; defer rerolls.free();
 	while(true) {
 		// Read a modifier
 		tlit = p.scan_ignore_whitespace();
 
 		// Handle modifier or EOF
 		switch (tlit.first) {
-		    case PLUS:
-            case MINUS:
-                IntAndError ie;// = p.parse_modifier(tlit.first);
-                mod = ie.first;
-			    if (ie.second.code == 0) {
-			    	roll.modifier += mod;
-			    } else {
-			    	if (tlit.first == MINUS) {
-			    		mod = -1;
-			    	}
+		case PLUS:
+		case MINUS:
+			IntAndError merr = p.parse_modifier(tlit.first);
+			mod = merr.first;
+			err = merr.second;
+			if (err.code == 0) {
+				roll.modifier += mod;
+			} else {
+				if (tlit.first == MINUS) {
+					mod = -1;
+				}
 
-			    	p.unscan();
-			    	tlit = p.scan_ignore_whitespace();
-			    	switch (tlit.first) { 
-			    	    case EOF: return {(Roll*)roll, new_error_s(END_OF_ROLL, tlit.second)};
-				        case GROUPSTART:
-					        if (grouped) {
-					        	// Technically this is an end of roll, but we want to
-					        	// capture the multiplier to determine the sign of the
-					        	// next term
-					        	return  {(Roll*)roll, new_error_i(AMBIGUOUS_MODIFIER, mod)};
-					        } 
-					    return {(Roll*) roll, new_error_s(END_OF_ROLL, tlit.second)};
-				    case GROUPEND:
-                    case GROUPSEP:
-				    	if (grouped) {
-							return {(Roll*)roll, new_error_s(END_OF_ROLL, tlit.second)};
-				    	}
-				    	return { null, new_error_s(UNEXPECTED_TOKEN, tlit.second) };
-				    default:
-				    	return {null, err};
-				    }
-			    }
-		    case EXPLODE:
-            case COMPOUND:
-            case PENETRATE:
-                ExplodingOpAndError op = p.parse_explosion(tlit.first, tlit.second);
-                roll.exploding = op.first;
-		    case KEEPHIGH:
-            case KEEPLOW:
-            case DROPHIGH:
-            case DROPLOW:
-		    	// roll.limit, err = p.parse_limit(tlit.first, tlit.second)
-		    case SORT:
-		    	switch (tlit.second) {
-		    	    case "s": roll.sort = ASCENDING;
-		    	    case "sd": roll.sort = DESCENDING;
-	            }
-		    case REROLL:
-		    	RerollOp rr; 
-		    	// rr, err = p.parseReroll(tlit.second);
-                rolls.push(rr);
-		    case GREATER:
-            case LESS: 
-            case EQUAL:
-		    	p.unscan();
-                ComparisonOpAndError op = p.parse_comparison();
-		    	roll.success = op.first;
-		    case FAILURES:
-                ComparisonOpAndError op = p.parse_comparison();
-		    	roll.failure =  op.first;
-		    case EOF:
-				err = new_error_s(END_OF_ROLL, tlit.second);
-                roll.rerolls = rolls.to_new_array(allocator::temp());
-		    	return {(Roll*)roll, err};
-		    case GROUPEND:
-            case GROUPSEP:
-		    	if (grouped) {
+				p.unscan();
+				tlit = p.scan_ignore_whitespace();
+				switch (tlit.first) {
+				case EOF:
 					err = new_error_s(END_OF_ROLL, tlit.second);
-                    roll.rerolls = rolls.to_new_array(allocator::temp());
-		    		return {(Roll*)roll, err};
-		    	}
-		    	return {null, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
-		    case DIE:
-		    	// It's ambiguous whether or not a +/- number is a modifier or a
-		    	// a combined die roll. If grouped and we get a die character AND
-		    	// the last token processed was a modifier, then we rewind and then
-		    	// raise a special error to indicate it needs attention.
-		    	if (grouped && (lastTok == PLUS || lastTok == MINUS) ){
-		    		p.unscan();
-		    		roll.modifier -= mod;
-		    		err = new_error_i(AMBIGUOUS_MODIFIER, mod);
-                    roll.rerolls = rolls.to_new_array(allocator::temp());
-		    		return {(Roll*)roll, err};
-		    	}
-                roll.rerolls = rolls.to_new_array(allocator::temp());
-		    	return {(Roll*)roll, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
-		    default:
-                roll.rerolls = rolls.to_new_array(allocator::temp());
-		    	return {(Roll*)roll, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
+					return {(Roll*)roll, err};
+				case GROUPSTART:
+					if (grouped) {
+						// Technically this is an end of roll, but we want to
+						// capture the multiplier to determine the sign of the
+						// next term
+						err = new_error_i(AMBIGUOUS_MODIFIER, mod);
+						return {(Roll*)roll, err};
+					}
+					return {null, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
+				case GROUPEND:
+				case GROUPSEP:
+					if (grouped) {
+						err = new_error_s(END_OF_ROLL, tlit.second);
+						return {(Roll*)roll, err};
+					}
+					return {null, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
+				default:
+					return {null, err};
+				}
+			}
+		case EXPLODE:
+		case COMPOUND:
+		case PENETRATE:
+			ExplodingOpAndError ee = p.parse_explosion(tlit.first, tlit.second);
+			roll.exploding = ee.first;
+			err = ee.second;
+		case KEEPHIGH:
+		case KEEPLOW:
+		case DROPHIGH:
+		case DROPLOW:
+			roll.limit = p.parse_limit(tlit.first, tlit.second);
+		case SORT:
+			switch (tlit.second) {
+			case "s":
+				roll.sort = ASCENDING;
+			case "sd":
+				roll.sort = DESCENDING;
+			}
+		case REROLL:
+			RerollOp rr = p.parse_reroll(tlit.second);
+			// roll.rerolls = append(roll.rerolls, rr);
+			rerolls.push(rr);
+		case GREATER:
+		case LESS:
+		case EQUAL:
+			p.unscan();
+			ComparisonOpAndError compErr = p.parse_comparison(); 
+			roll.success = compErr.first;
+			err = compErr.second;
+		case FAILURES:
+			ComparisonOpAndError compErr = p.parse_comparison(); 
+			roll.failure = compErr.first;
+			err = compErr.second;
+		case EOF:
+			err = new_error_s(END_OF_ROLL, tlit.second);
+			roll.rerolls = rerolls.to_new_array();
+			return {(Roll*)roll, err};
+		case GROUPEND:
+		case GROUPSEP:
+			roll.rerolls = rerolls.to_new_array();
+			if (grouped) {
+				err = new_error_s(END_OF_ROLL, tlit.second);
+				return {(Roll*)roll, err};
+			}
+			err = new_error_s(UNEXPECTED_TOKEN, tlit.second);
+			return{ null, err};
+		case DIE:
+			// It's ambiguous whether or not a +/- number is a modifier or a
+			// a combined die roll. If grouped and we get a die character AND
+			// the last token processed was a modifier, then we rewind and then
+			// raise a special error to indicate it needs attention.
+			roll.rerolls = rerolls.to_new_array();
+			if (grouped && (lastTok == PLUS || lastTok == MINUS) ){
+				p.unscan();
+				roll.modifier -= mod;
+				err = new_error_i(AMBIGUOUS_MODIFIER, mod);
+				return {(Roll*)roll, err};
+			}
+			return {(Roll*)roll, new_error_s(END_OF_ROLL, tlit.second)};
+		default:
+			roll.rerolls = rerolls.to_new_array();
+			return {(Roll*)roll, new_error_s(END_OF_ROLL, tlit.second)};
 		}
-
+		
 		// If there is an error, lets bail out
 		if (err.code != 0) {
 			return {null, err};
 		}
 
 		lastTok = tlit.first;
-        roll.rerolls = rolls.to_new_array(allocator::temp());
-        return {(Roll*) roll, new_error_i()};
 	}
-}
-/*
-// parse_dice_roll parses a DiceRoll statement
-func (p *Parser) parse_dice_roll(grouped bool) (roll *DiceRoll, err error) {
-	roll = &DiceRoll{}
-	tok := p.buf.tok
-	lit := p.buf.lit
-
-	// If NUM, we store it as the multiplier, else we use 1
-	if tok == NUM {
-		roll.multiplier, _ = strconv.Atoi(lit)
-		tok, lit = p.scan_ignore_whitespace()
-		if tok != tDIE {
-			return null, ErrUnexpectedToken(lit)
-		}
-	} else {
-		roll.multiplier = 1
-	}
-
-	// We will have a DIE token here, so parse it
-	if roll.Die, err = p.parse_die(lit); err != null {
-		return null, err
-	}
-
-	// Next we should loop over all our modifiers and total them up
-	var mod int
-	var lastTok Token
-	for {
-		// Read a modifier
-		tok, lit := p.scan_ignore_whitespace()
-
-		// Handle modifier or EOF
-		switch tok {
-		case PLUS, MINUS:
-			mod, err = p.parse_modifier(tok)
-			if err == null {
-				roll.modifier += mod
-			} else {
-				if tok == MINUS {
-					mod = -1
-				}
-
-				p.unscan()
-				tok, lit = p.scan_ignore_whitespace()
-				switch tok {
-				case EOF:
-					err = ErrEndOfRoll(lit)
-					return
-				case tGROUPSTART:
-					if grouped {
-						// Technically this is an end of roll, but we want to
-						// capture the multiplier to determine the sign of the
-						// next term
-						err = ErrAmbiguousModifier(mod)
-						return
-					}
-					return null, ErrUnexpectedToken(lit)
-				case GROUPEND, GROUPSEP:
-					if grouped {
-						err = ErrEndOfRoll(lit)
-						return
-					}
-					return null, ErrUnexpectedToken(lit)
-				default:
-					return null, err
-				}
-			}
-		case EXPLODE, COMPOUND, PENETRATE:
-			roll.exploding, err = p.parse_explosion(tok, lit)
-		case KEEPHIGH, KEEPLOW, DROPHIGH, DROPLOW:
-			roll.limit, err = p.parse_limit(tok, lit)
-		case SORT:
-			switch lit {
-			case "s":
-				roll.sort = ASCENDING
-			case "sd":
-				roll.sort = DESCENDING
-			}
-		case REROLL:
-			var rr RerollOp
-			rr, err = p.parseReroll(lit)
-			roll.rerolls = append(roll.rerolls, rr)
-		case GREATER, LESS, EQUAL:
-			p.unscan()
-			roll.success, err = p.parse_comparison()
-		case tFAILURES:
-			roll.failure, err = p.parse_comparison()
-		case EOF:
-			err = ErrEndOfRoll(lit)
-			return
-		case GROUPEND, GROUPSEP:
-			if grouped {
-				err = ErrEndOfRoll(lit)
-				return
-			}
-			return null, ErrUnexpectedToken(lit)
-		case tDIE:
-			// It's ambiguous whether or not a +/- number is a modifier or a
-			// a combined die roll. If grouped and we get a die character AND
-			// the last token processed was a modifier, then we rewind and then
-			// raise a special error to indicate it needs attention.
-			if grouped && (lastTok == PLUS || lastTok == MINUS) {
-				p.unscan()
-				roll.modifier -= mod
-				err = ErrAmbiguousModifier(mod)
-				return
-			}
-			return null, ErrUnexpectedToken(lit)
-		default:
-			return null, ErrUnexpectedToken(lit)
-		}
-
-		// If there is an error, lets bail out
-		if err != null {
-			return null, err
-		}
-
-		lastTok = tok
-	}
+	// return {(Roll*) roll, err};
 }
 
-func (p *Parser) parseReroll(lit string) (rr RerollOp, err error) {
-	if lit == "ro" {
-		rr.Once = true
+// func (p *Parser) parse_reroll(lit string) (rr RerollOp, err error) 
+fn RerollOp Parser.parse_reroll(Parser* p, String lit)
+{
+	RerollOp rr;
+	if (lit == "ro") {
+		rr.once = true;
 	}
 
 	// determine the comparison operator for the reroll op
-	compOp, err := p.parse_comparison()
-	if err != null {
-		return
+	ComparisonOpAndError err = p.parse_comparison();
+	if( err.second.code != 0 ){
+		return rr;
 	}
-
-	rr.ComparisonOp = compOp
-	return
+	rr.op = err.first;
+	return rr;
 }
 
-func (p *Parser) parse_modifier(tok Token) (int, error) {
-	mult := 1
-	if tok == MINUS {
-		mult = -1
+// func (p *Parser) parse_modifier(tok Token) (int, error) 
+fn IntAndError Parser.parse_modifier(Parser* p, Token tok)
+{
+	int mult = 1;
+	if (tok == MINUS) {
+		mult = -1;
 	}
 	// Get modifer value
-	tok, lit := p.scan_ignore_whitespace()
-	if tok != NUM {
-		return 0, ErrUnexpectedToken(lit)
+	TokenAndLit tlit = p.scan_ignore_whitespace();
+	if (tlit.first != NUM) {
+		return {0, new_error_s(UNEXPECTED_TOKEN, tlit.second)};
+		// return 0, ErrUnexpectedToken(lit)
 	}
 
 	// Add to statement modifer
-	mod, err := strconv.Atoi(lit)
-	return mod * mult, err
+	int mod = tlit.second.to_int()!!;
+	// mod, err := strconv.Atoi(lit)
+	return {mod * mult, new_error_i()};
 }
 
-func (p *Parser) parse_die(dieCode string) (Die, error) {
-	trimmedDieCode := lit.strip(lit.ToUpper(dieCode), "D")
-	if num, err := strconv.Atoi(trimmedDieCode); err == null {
-		return NormalDie(num), null
+struct DieAndError{
+	Die first;
+	RollError second;
+}
+
+// func (p *Parser) parse_die(dieCode string) (Die, error) 
+fn Die Parser.parse_die(Parser* p, String dieCode)
+{
+	String trimmedDieCode = dieCode.new_ascii_to_upper().strip("D");
+	int! num = trimmedDieCode.to_int();
+	if  (try num) {
+		NormalDie nd = num;
+		return (Die) mem::new(NormalDie, nd);// (Die) nd;
 	}
 
 	// Is it a Fate/Fudge die roll?
-	if trimmedDieCode == "F" {
-		return FateDie(0), null
+	if (trimmedDieCode == "F") {
+		FateDie fd;
+		// return (Die) fd;
+		return (Die) mem::new(NormalDie, fd);
 	}
-
-	return null, ErrUnknownDie(dieCode)
+	NormalDie nds = 0;
+	// return (Die) nds;
+	return (Die) mem::new(NormalDie, nds);
+	// return null, ErrUnknownDie(dieCode)
 }
 
-*/
 
 struct ExplodingOpAndError{
     ExplodingOp* first;
@@ -606,11 +517,14 @@ fn TokenAndLit Parser.scan(Parser* p) {
 		p.buf.n = 0;
 		return {p.buf.tok, p.buf.lit};
 	}
+	io::printfn("Hi!");
     // Otherwise read the next token from the scanner.
     TokenAndLit tlit =  p.s.scan();
+	io::printfn("Hi!");
     // Save it to the buffer in case we unscan later.
     p.buf.tok = tlit.first;
     p.buf.lit = tlit.second;
+	io::printfn("Hi!");
     return tlit;
 }
 
@@ -619,6 +533,7 @@ fn void Parser.unscan(Parser* p) { p.buf.n = 1; }
 
 // scan_ignore_whitespace scans the next non-whitespace token.
 fn TokenAndLit Parser.scan_ignore_whitespace(Parser* p){
+	
     TokenAndLit tlit = p.scan();
     if (tlit.first == WS) {
 		tlit = p.scan();

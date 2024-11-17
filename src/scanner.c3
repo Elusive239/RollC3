@@ -41,7 +41,7 @@ fn bool is_valid_die_roll(Rune ch) => !is_whitespace(ch) && !is_grouping(ch) && 
 
 //USE BYTE BUFFER
 struct Scanner{
-    InStream* r;
+    inline InStream* r;
 }
 
 // new_scanner returns a new instance of scanner
@@ -55,8 +55,9 @@ def TokenAndLit = Tuple(<Token, String>);
 
 // Scan returns the next token and literal value
 fn TokenAndLit Scanner.scan(Scanner* s) {
-	Rune ch = s.read();;
-
+	io::printfn("Hi!");
+	Rune ch = s.read();
+	io::printfn("Hi!");
 	switch {
 	case is_whitespace(ch):
 		s.unread();
@@ -161,7 +162,7 @@ fn TokenAndLit Scanner.scan_die_or_drop(Scanner* s){
 	// We assume a die token by default and switch based on subsequent Runes.
 	Token tok = DIE;
 	while(true){
-		Rune ch = s.read();;
+		Rune ch = s.read();
 
 		if (ch == R_EOF) {
 			break;
@@ -300,7 +301,11 @@ fn TokenAndLit Scanner.scan_sort(Scanner* s) {
 // read reads the next rune from the buffered reader.
 // Returns the rune(0) if an error occurs (or io.R_EOF is returned).
 fn Rune Scanner.read(Scanner* s) {
-	Rune! ch = s.r.read_byte();
+	io::printfn("hi");
+	InStream stream = *s.r;
+	io::printfn("hi");
+	Rune! ch = stream.read_byte();
+	io::printfn("hi");
 	if (catch ch) {
 		return R_EOF;
 	}
