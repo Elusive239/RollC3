@@ -71,7 +71,7 @@ struct Parser {
 }
 
 // new_parser returns a Parser instance
-fn Parser* new_parser(InStream* r) {
+fn Parser* new_parser(InStream r) {
     Parser* p = allocator::new(allocator::temp(), Parser);
     p.s = new_scanner(r);
 	return p;

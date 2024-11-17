@@ -39,13 +39,13 @@ fn bool is_keep_limit(Rune ch) => ch == 'k';
 // Return true if ch is a valid Runeacter for indicating a die roll
 fn bool is_valid_die_roll(Rune ch) => !is_whitespace(ch) && !is_grouping(ch) && !is_reroll(ch) && !is_exploding(ch) && !is_compare(ch) && !is_modifier(ch) && !is_keep_limit(ch) && ch != 'd' && ch != 'D';
 
-//USE BYTE BUFFER
+//USE BYTE READER
 struct Scanner{
-    inline InStream* r;
+    inline InStream r;
 }
 
 // new_scanner returns a new instance of scanner
-fn Scanner* new_scanner(InStream* r) {
+fn Scanner* new_scanner(InStream r) {
     Scanner* scanner = allocator::new(allocator::temp(), Scanner);
     scanner.r = r;
     return scanner;
@@ -302,9 +302,7 @@ fn TokenAndLit Scanner.scan_sort(Scanner* s) {
 // Returns the rune(0) if an error occurs (or io.R_EOF is returned).
 fn Rune Scanner.read(Scanner* s) {
 	io::printfn("hi");
-	InStream stream = *s.r;
-	io::printfn("hi");
-	Rune! ch = stream.read_byte();
+	Rune! ch = s.r.read_byte();
 	io::printfn("hi");
 	if (catch ch) {
 		return R_EOF;
