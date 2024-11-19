@@ -363,7 +363,7 @@ fn void apply_limit(LimitOp* limitOp , Result* result) {
             int ok = m[a.result]!!;
 			if (ok) {
                 newResults[i] = a;
-                m[a.result]--;
+				m.set(a.result, m[a.result]!!-1);
 			}else{
                 m.remove(a.result);
             }

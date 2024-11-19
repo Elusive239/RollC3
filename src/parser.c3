@@ -36,14 +36,18 @@ fn Roll Parser.parse_roll(Parser* p, Token tlit, bool grouped) {
 	switch( tlit.tok ){
 	    case NUM:
         case DIE:
-			return {false, *p.parse_dice_roll(grouped, &err), err};
+			DiceRoll* dr = p.parse_dice_roll(grouped, &err);
+			if(dr){
+				return {false, *dr, err};
+			}
+			break;
 	    	// return 
 	    // case GROUPSTART:
 	    // 	return p.parse_grouped_roll(grouped);
 	    default:
             return {false, {}, UNEXPECTED_TOKEN};
 	}
-    // return r;
+    return {false, {}, err};
 }
 
 def ReRerollList = List(<RerollOp>);
@@ -189,7 +193,7 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 		}
 
 		lastTok = tlit;
-	}*/
+	}
 	// return {(Roll*) roll, err};
 }
 
