@@ -2,139 +2,44 @@ module rollc3;
 import std::io;
 import std::collections;
 
-// ComparisonType is the type of comparison
-def ComparisonType = int;	
-// EQUALS matches only values that are equal to the comparison value
-const ComparisonType EQUALS = 0;
-// GREATERTHAN matches only values greater than the comparison value
-const ComparisonType GREATERTHAN = 1;
-// LESSTHAN matches only values less than the comparison value
-const ComparisonType LESSTHAN = 2;
-
-// ComparisonOp is the operation that defines how you compare against a roll
-// to determine whether the result counts
-struct ComparisonOp {
-	ComparisonType type;
-	int value;
-}
-
-// Match returns true if the given value compares positively against the op val
-fn bool ComparisonOp.match(ComparisonOp* op, int val) {
-	switch (op.type) {
-	    case EQUALS: return val == op.value;
-	    case GREATERTHAN: return val > op.value;
-	    case LESSTHAN: return val < op.value;
-	}
-	return false;
-}
-
-// String returns the string representation of the comparison operator
-fn String ComparisonOp.string(ComparisonOp* op) {
-	switch (op.type) {
-	    case EQUALS: return string::tformat("=%d", op.value);
-	    case GREATERTHAN: return string::tformat(">%d", op.value);
-	    case LESSTHAN: return string::tformat("<%d", op.value);
-	}
-	return "";
-}
-
-// ExplodingType is the type of exploding die
-def ExplodingType = int;
-// EXPLODING adds new dice for each roll satisfying the exploding condition
-const ExplodingType EXPLODING = 0;
-// COMPOUNDED adds to a single new result for each roll
-const ExplodingType COMPOUNDED = 1;
-// PENETRATING is like Exploding, except each die result has a -1 modifier
-const ExplodingType PENETRATING = 2;
-
-// ExplodingOp is the operation that defines how a dice roll explodes
-struct ExplodingOp {
-	inline ComparisonOp* op;
-	ExplodingType type;
-}
-
-// String returns the string representation of the exploding dice operation
-fn String ExplodingOp.string(ExplodingOp e) {
-    DString output;
-	switch (e.type) {
-        case EXPLODING: output  .append  (  "!");
-        case COMPOUNDED: output .append  ( "!!");
-        case PENETRATING: output.append  ("!p" );
-	}
-    output.append(e.op.string().strip("="));
-
-	return output.str_view().tcopy();
-}
-
-// LimitType is the type of roll limitation
-def LimitType = int;
-// KEEPHIGHEST indicated we should keep the highest results
-const LimitType KEEPHIGHEST = 0;
-// KEEPLOWEST indicated we should keep the lowest results
-const LimitType KEEPLOWEST = 1;
-// DROPHIGHEST indicated we should drop the highest results
-const LimitType DROPHIGHEST = 2;
-// DROPLOWEST indicated we should drop the lowest results
-const LimitType DROPLOWEST = 3;
-
-// LimitOp is the operation that defines how dice roll results are limited
-struct LimitOp {
-	int amount;
-	LimitType type;
-}
-
-fn String LimitOp.string(LimitOp op) {
-    DString output;
-	switch (op.type) {
-	    case KEEPHIGHEST: output.append( "kh") ; break;
-        case KEEPLOWEST: output .append("kl" ); break;
-        case DROPHIGHEST: output.append( "dh") ; break;
-        case DROPLOWEST: output .append("dl"); break;
-	}
-
-	if (op.amount > 1) {
-		output.append(string::tformat("%d", op.amount));
-	}
-
-	return output.str_view().tcopy();
-}
-
-// RerollOp is the operation that defines how dice are rerolled
-struct RerollOp {
-	ComparisonOp* op;
-	bool once;
-}
-
-// String returns the string representation of the exploding dice operation
-fn String RerollOp.string(RerollOp e){
-    DString output; defer output.free();
-	if (e.once) {output.append("ro");}
-	else {output.append("r");}
-    output.append(e.op.string().strip( "="));
-	return output.str_view().tcopy();
-}
-
-// SortType is the type of sorting to use for dice roll results
-def SortType = int;
-
-// String return the string representation of a SortType value
-fn String SortType.string(SortType t) => t == ASCENDING ? "s" : t == DESCENDING ? "sd" : "";
-
-// UNSORTED doesn't sort dice rolls
-const SortType UNSORTED = 0;
-// ASCENDING sorts dice rolls from lowest to highest
-const SortType ASCENDING = 1;
-// DESCENDING sorts dice rolls from highest to lowest
-const SortType DESCENDING = 2;
-
+distinct RollError = int;
+const RollError NO_ERROR 			= 0;
+const RollError UNEXPECTED_TOKEN 	= 1;
+const RollError UNKNOWN_DIE 		= 2;
+const RollError END_OF_ROLL 		= 3;
+const RollError AMBIGUOUS_MODIFIER 	= 4;
 
 // roll is any kind of roll
-interface Roll {
-	fn Result roll();
-	fn String string();
-    fn int modifier();
-    fn bool is_group();
+struct Roll { 
+    bool is_group;
+    union{
+        DiceRoll dr;
+        GroupedRoll gr;
+    }
+	RollError err;
 }
+
+fn Result Roll.roll(Roll r){
+    if(r.is_group) return r.gr.roll() ;
+    return r.dr.roll();
+}
+
+fn String Roll.string(Roll r){
+    if(r.is_group) return r.gr.string() ;
+    return r.dr.string();
+}
+
+fn int Roll.modifier(Roll r){
+    if(r.is_group) return r.gr.modifier ;
+    return r.dr.modifier;
+}
+
+fn bool Roll.is_group(Roll r){
+    return r.is_group;
+}
+
+
+def ResultList = List(<DieRoll>);
 
 // Result is a collection of die rolls and a count of successes
 struct Result {
@@ -184,7 +89,7 @@ fn Result DiceRoll.roll(DiceRoll* dr){
 		totalMultiplier = -1;
 	}
 
-    List(<DieRoll>) initial; defer initial.free();
+    ResultList initial; defer initial.free();
 
 	for( int i = 0; i < dr.multiplier*totalMultiplier; i++) {
 		initial.push(dr.die.roll());
@@ -204,7 +109,7 @@ fn Result DiceRoll.roll(DiceRoll* dr){
 		    }
         };
 	}
-    List(<DieRoll>) total; defer total.free();
+    ResultList total; defer total.free();
 	// 3. For each result, check exploding criteria and generate new rolls
 	if (dr.exploding != null) {
 		switch (dr.exploding.type) {
@@ -316,7 +221,7 @@ fn int GroupedRoll.modifier(GroupedRoll gr) => gr.modifier;
 // roll gets the results of rolling the dice that make up a dice roll
 fn Result GroupedRoll.roll(GroupedRoll* gr) {
     Result result;
-    List(<DieRoll>) group_rolls; defer group_rolls.free();
+    ResultList group_rolls; defer group_rolls.free();
 	// 1. Generate results for each roll
 	foreach (index, roll : gr.rolls) {
 		if (gr.combined) {
@@ -367,9 +272,7 @@ fn String GroupedRoll.string(GroupedRoll* gr) {
     DString output;
 	String[] parts = mem::temp_new_array(String, gr.rolls.len);
     foreach(index, roll : gr.rolls){
-		if (roll != null) {
-			parts[index] =  roll.string();
-		}
+		parts[index] =  roll.string();
 	}
 
 	String sep = ", ";
@@ -418,6 +321,8 @@ fn String GroupedRoll.string(GroupedRoll* gr) {
 	return output.str_view().tcopy();
 }
 
+def FaceMap =  HashMap(<int, int>);
+
 fn void apply_limit(LimitOp* limitOp , Result* result) {
 	if (limitOp != null) {
 		Result rolls;
@@ -443,7 +348,7 @@ fn void apply_limit(LimitOp* limitOp , Result* result) {
 		case DROPLOWEST:
 			rolls.results = rolls.results[limit..];
 		}
-        HashMap(<int, int>) m; defer m.free();
+        FaceMap m; defer m.free();
 		foreach(r : rolls.results){
             if(m.has_key(r.result)){
                 m.set(r.result, m[r.result]!! + 1);

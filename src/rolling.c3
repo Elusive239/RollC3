@@ -1,33 +1,5 @@
-/**
-MIT License
-
-Copyright (c) 2016 Andrew Montgomery-Hurrell
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
 module rollc3;
-import std::io;
-import std::math;
 import std::math::random;
-import std::collections::list;
-import std::collections::tuple;
 
 // DieRoll is the result of a die roll
 struct DieRoll{
@@ -36,9 +8,22 @@ struct DieRoll{
 }
 
 // Die is the interface allDice must confirm to
-interface Die { 
-	fn DieRoll roll();
-	fn String string();
+struct Die { 
+    bool normal;
+    union{
+        NormalDie nd;
+        FateDie fd;
+    }
+}
+
+fn DieRoll Die.roll(Die d){
+    if(d.normal) return d.nd.roll();
+    return d.fd.roll();
+}
+
+fn String Die.string(Die d){
+    if(d.normal) return d.nd.string();
+    return d.fd.string();
 }
 
 // FateDie is a die representing the typical Fate/Fudge die
