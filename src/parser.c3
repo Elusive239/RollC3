@@ -7,6 +7,7 @@ struct Parser {
 	struct buf {
     	inline Token token;
 		int n  ;
+		int mod;
 	}
 }
 
@@ -59,19 +60,16 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 		tlit = p.scan_ignore_whitespace();
 		if (tlit.tok = DIE) {
 			*err = UNEXPECTED_TOKEN;
-			return roll;
+			return null;
 		}
 	} else {
 		roll.multiplier = 1;
 	}
     
     // We will have a DIE token here, so parse it
-	Die die = p.parse_die(tlit.lit, err);
-	if( *err == NO_ERROR) {
-	    roll.die = die;
-	}else {
-		*err = UNKNOWN_DIE;
-        return roll;
+	roll.die = p.parse_die(tlit.lit, err);
+	if( *err != NO_ERROR) {
+	    return null;
 	}
 
 	// Next we should loop over all our modifiers and total them up
@@ -86,10 +84,9 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 		switch (tlit.tok) {
 		case PLUS:
 		case MINUS:
-			int merr = p.parse_modifier(tlit, err);
+			mod = p.parse_modifier(tlit, err);
 			
 			if (*err == NO_ERROR) {
-                mod = merr;
 				roll.modifier += mod;
 			} else {
 				if (tlit.tok == MINUS) {
@@ -108,29 +105,27 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 						// Technically this is an end of roll, but we want to
 						// capture the multiplier to determine the sign of the
 						// next term
+						p.buf.mod = mod;
 						return roll;
 					}
 					*err = UNEXPECTED_TOKEN;
-					return roll; 
+					return null; 
 				case GROUPEND:
 				case GROUPSEP:
 					if (grouped) {
-						*err = AMBIGUOUS_MODIFIER;
+						*err = END_OF_ROLL;
 						return roll;
 					}
 					*err = UNEXPECTED_TOKEN;
-					return roll;
+					return null;
 				default:
-					return roll;
+					return null;
 				}
 			}
 		case EXPLODE:
 		case COMPOUND:
 		case PENETRATE:
-			ExplodingOp* ee = p.parse_explosion(tlit, err);
-            if(*err == NO_ERROR){
-			    roll.exploding = ee;
-            }
+            roll.exploding = p.parse_explosion(tlit, err);
             break;
 		case KEEPHIGH:
 		case KEEPLOW:
@@ -147,23 +142,14 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 			}
             break;
 		case REROLL:
-			RerollOp rr = p.parse_reroll(tlit.lit, err);
-            if(*err == NO_ERROR){
-			    rerolls.push(rr);
-            }break;
+            rerolls.push(p.parse_reroll(tlit.lit, err));
 		case GREATER:
 		case LESS:
 		case EQUAL:
 			p.unscan();
-			ComparisonOp* comp = p.parse_comparison(err); 
-            if(*err == NO_ERROR) {
-                roll.success = comp;
-            }break;
+            roll.success = p.parse_comparison(err);
 		case FAILURES:
-			ComparisonOp* comp = p.parse_comparison(err); 
-            if(*err == NO_ERROR) {
-                roll.failure = comp;
-            }break;
+			roll.failure = p.parse_comparison(err); 
 		case EOF:
 			*err = END_OF_ROLL;
 			roll.rerolls = rerolls.to_new_array();
@@ -187,24 +173,23 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 				p.unscan();
 				roll.modifier -= mod;
 				*err = AMBIGUOUS_MODIFIER;
-				// err = new_error_i(AMBIGUOUS_MODIFIER, mod);
-				return roll; //new_roll(roll, err);
+				p.buf.mod = mod;
+				return roll;
 			}
-			*err = END_OF_ROLL;
-			return roll; //new_roll(roll, new_error_s(END_OF_ROLL, tlit.lit));
-			// return {(Roll*)roll, new_error_s(END_OF_ROLL, tlit.lit)};
+			*err = UNEXPECTED_TOKEN;
+			return null; 
 		default:
-			roll.rerolls = rerolls.to_new_array();
-			return roll; //new_roll(roll, new_error_s(END_OF_ROLL, tlit.lit));
+			*err = UNEXPECTED_TOKEN;
+			return null;
 		}
 		
 		// If there is an error, lets bail out
 		if (*err != NO_ERROR) {
-			return roll; //new_roll(roll, err);
+			return null;
 		}
 
 		lastTok = tlit;
-	}
+	}*/
 	// return {(Roll*) roll, err};
 }
 
@@ -259,7 +244,7 @@ fn int Parser.parse_modifier(Parser* p, Token tok, RollError* err)
 	if(try mod){
 		return mod*mult;
 	}
-	*err = AMBIGUOUS_MODIFIER;
+	*err = INT_PARSE_FAILURE;
 	return 0;
 }
 

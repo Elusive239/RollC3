@@ -6,7 +6,7 @@ fn int main(String[] args)
     @pool(){
         ByteReader buffer;
 
-        Parser* p = rollc3::new_parser(buffer.init("3d6+1"));
+        Parser* p = rollc3::new_parser(buffer.init("3d6"));
         Roll roll = p.parse();
         io::printfn("%q", roll.roll().total);
     };

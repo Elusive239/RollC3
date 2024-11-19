@@ -8,6 +8,7 @@ const RollError UNEXPECTED_TOKEN 	= 1;
 const RollError UNKNOWN_DIE 		= 2;
 const RollError END_OF_ROLL 		= 3;
 const RollError AMBIGUOUS_MODIFIER 	= 4;
+const RollError INT_PARSE_FAILURE 	= 5;
 
 // roll is any kind of roll
 struct Roll { 
