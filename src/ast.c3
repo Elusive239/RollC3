@@ -333,6 +333,7 @@ fn void apply_limit(LimitOp* limitOp , Result* result) {
 		// Sort our tmp result copy
         //TODO MAKE SORT FUNCTION
 		// sort.sort(&rolls);
+		rolls.sort();
 
 		// Work out limit
 		int limit = limitOp.amount;
@@ -350,27 +351,27 @@ fn void apply_limit(LimitOp* limitOp , Result* result) {
 		case DROPLOWEST:
 			rolls.results = rolls.results[limit..];
 		}
-        FaceMap m; defer m.free();
-		foreach(r : rolls.results){
-            if(m.has_key(r.result)){
-                m.set(r.result, m[r.result]!! + 1);
-            }else{
-                m.set(r.result, 0);
-            }
-		}
+        // FaceMap m; defer m.free();
+		// foreach(r : rolls.results){
+        //     if(m.has_key(r.result)){
+        //         m.set(r.result, m[r.result]!! + 1);
+        //     }else{
+        //         m.set(r.result, 0);
+        //     }
+		// }
 
-		DieRoll[] newResults = allocator::new_array(allocator::temp(), DieRoll, rolls.results.len);
-        foreach(i, a : result.results ){
-            int ok = m[a.result]!!;
-			if (ok) {
-                newResults[i] = a;
-				m.set(a.result, m[a.result]!!-1);
-			}else{
-                m.remove(a.result);
-            }
-		}
+		// DieRoll[] newResults = allocator::new_array(allocator::temp(), DieRoll, rolls.results.len);
+        // foreach(i, a : result.results ){
+        //     int! ok = m[a.result];
+		// 	if (try ok) if(ok) {
+        //         newResults[i] = a;
+		// 		m.set(a.result, m[a.result]!!-1);
+		// 	}else{
+        //         m.remove(a.result);
+        //     }
+		// }
 
-		result.results = newResults;
+		// result.results = newResults;
 	}
 }
 
@@ -400,10 +401,27 @@ fn void apply_failure(ComparisonOp* failureOp , int modifier, Result* result) {
 fn void apply_sort(SortType sortType, Result* result) {
 	switch (sortType) {
 	case UNSORTED: return;
-	case ASCENDING: // sort.sort(result); 
+	case ASCENDING:  result.sort(); 
         break;
-	case DESCENDING: // sort.sort(sort.reverse(result));
+	case DESCENDING: result.sort(true); 
         break;
+	}
+}
+
+fn void Result.sort(Result* result, bool reverse = false){
+	for(int i = 0; i < result.len(); i++){
+		for(int y = i; y < result.len(); y++){
+			if(result.less(i, y)){ 
+				result.swap(i, y);
+			}else{
+				break;
+			}
+		}
+	}
+
+	if(reverse) for(int i = 0 ; i < result.len()/2; i++){
+		int other = result.len()-1;
+		result.swap( i, other);
 	}
 }
 
