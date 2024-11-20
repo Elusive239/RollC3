@@ -327,29 +327,41 @@ def FaceMap =  HashMap(<int, int>);
 
 fn void apply_limit(LimitOp* limitOp , Result* result) {
 	if (limitOp != null) {
-		Result rolls;
-		rolls.results = mem::temp_new_array(DieRoll, result.results.len);
-        foreach(i, r :result.results ) rolls.results[i] = r;
-		// Sort our tmp result copy
-        //TODO MAKE SORT FUNCTION
-		// sort.sort(&rolls);
-		rolls.sort();
+		// Result rolls;
+		// rolls.results = mem::temp_new_array(DieRoll, result.results.len);
+        // foreach(i, r :result.results ) rolls.results[i] = r;
 
 		// Work out limit
 		int limit = limitOp.amount;
-		if (limit > rolls.results.len) {
-			limit = rolls.results.len;
-		}
+		// if (limit > result.len()) {
+		// 	limit = result.len();
+		// }
 
+		result.sort();
+		foreach(i, re : result.results){
+			io::printfn("%d:%d", i,  re.result);
+		}
+		if(limit >= result.len()){
+			switch (limitOp.type) {
+				case KEEPHIGHEST:
+				case KEEPLOWEST:
+					return;
+				case DROPHIGHEST:
+				case DROPLOWEST:
+					allocator::free(allocator::temp(), result.results);
+					result.results = allocator::new_array(allocator::temp(), DieRoll, 0);
+					return;
+			}
+		}
 		switch (limitOp.type) {
-		case KEEPHIGHEST:
-			rolls.results = rolls.results[rolls.results.len-limit..];
-		case KEEPLOWEST:
-			rolls.results = rolls.results[..limit];
-		case DROPHIGHEST:
-			rolls.results = rolls.results[..rolls.results.len-limit];
-		case DROPLOWEST:
-			rolls.results = rolls.results[limit..];
+			case KEEPHIGHEST:
+				result.results = result.results[result.results.len-limit..]; break;
+			case KEEPLOWEST:
+				result.results = result.results[..limit]; break;
+			case DROPHIGHEST:
+				result.results = result.results[..result.results.len-limit]; break;
+			case DROPLOWEST:
+				result.results = result.results[limit..]; break;
 		}
         // FaceMap m; defer m.free();
 		// foreach(r : rolls.results){
@@ -426,6 +438,7 @@ fn void Result.sort(Result* result, bool reverse = false){
 }
 
 fn void finalise_totals(ComparisonOp* successOp, ComparisonOp*  failureOp, int modifier, int multiplier,Result*  result) {
+	result.total = 0;
 	if (successOp == null && failureOp == null) {
 		foreach(roll : result.results) {
 			result.total += roll.result;

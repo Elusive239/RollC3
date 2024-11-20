@@ -6,13 +6,13 @@ fn int main(String[] args)
     @pool(){
         ByteReader buffer;
 
-        Parser* p = rollc3::new_parser(buffer.init(" 2d20kl1"));
+        Parser* p = rollc3::new_parser(buffer.init(" 2d20dl1"));
         Roll roll = p.parse();
 		io::printfn("%s", roll.string());
 		// io::printfn("%s", roll.roll().results);
-		foreach(i, result : roll.roll().results){
-			io::printfn("%d:%d", i,  result.result);
-		}
+		// foreach(i, result : roll.roll().results){
+		// 	io::printfn("%d:%d", i,  result.result);
+		// }
         io::printfn("%d", roll.roll().total);
 		return (int) roll.err;
     };
