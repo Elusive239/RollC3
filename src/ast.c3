@@ -21,6 +21,7 @@ struct Roll {
 }
 
 fn Result Roll.roll(Roll r){
+	// io::printfn("Roll is %s", r.is_group ? "group roll" : "dice roll");
     if(r.is_group) return r.gr.roll() ;
     return r.dr.roll();
 }
@@ -78,7 +79,7 @@ fn bool DiceRoll.is_group(DiceRoll dr) => false;
 fn int DiceRoll.modifier(DiceRoll dr) => dr.modifier;
 
 // roll gets the results of rolling the dice that make up a dice roll
-fn Result DiceRoll.roll(DiceRoll* dr){
+macro Result DiceRoll.roll(DiceRoll* dr){
     Result result;
 	// 1. Do Multiplier rolls of Die
 	if (dr.multiplier == 0) {
@@ -173,7 +174,6 @@ fn String DiceRoll.string(DiceRoll* dr) {
 	} else if (dr.multiplier == 1) {
 		output.append("+");
 	}
-
 	output.append(dr.die.string());
 
 	if (dr.modifier != 0) {
@@ -220,7 +220,7 @@ fn bool GroupedRoll.is_group(GroupedRoll gr) => true;
 fn int GroupedRoll.modifier(GroupedRoll gr) => gr.modifier;
 
 // roll gets the results of rolling the dice that make up a dice roll
-fn Result GroupedRoll.roll(GroupedRoll* gr) {
+macro Result GroupedRoll.roll(GroupedRoll* gr) {
     Result result;
     ResultList group_rolls; defer group_rolls.free();
 	// 1. Generate results for each roll

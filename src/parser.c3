@@ -21,7 +21,6 @@ fn Parser* new_parser(InStream r) {
 // Parse parses a Roll statement.
 fn Roll Parser.parse(Parser* p) {
 	// tok token should be a NUM or a DIE
-	// io::printfn("Hi");
     Token tlit = p.scan_ignore_whitespace();
     Roll r =  p.parse_roll(tlit, false);
 	if(r.err == NO_ERROR){
@@ -38,7 +37,7 @@ fn Roll Parser.parse_roll(Parser* p, Token tlit, bool grouped) {
         case DIE:
 			DiceRoll* dr = p.parse_dice_roll(grouped, &err);
 			if(dr){
-				return {false, *dr, err};
+				return {false, *dr, err == END_OF_ROLL ? 0 : err};
 			}
 			break;
 	    	// return 
@@ -56,13 +55,11 @@ def ReRerollList = List(<RerollOp>);
 fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 	DiceRoll* roll = allocator::new(allocator::temp(), DiceRoll);
 	Token tlit = {p.buf.tok, p.buf.lit};
-
-
 	// If NUM, we store it as the multiplier, else we use 1
 	if (tlit.tok == NUM ){
 		roll.multiplier = tlit.lit.to_int()!!;
 		tlit = p.scan_ignore_whitespace();
-		if (tlit.tok = DIE) {
+		if (tlit.tok != DIE) {
 			*err = UNEXPECTED_TOKEN;
 			return null;
 		}
@@ -83,7 +80,6 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 	while(true) {
 		// Read a modifier
 		tlit = p.scan_ignore_whitespace();
-
 		// Handle modifier or EOF
 		switch (tlit.tok) {
 		case PLUS:
@@ -274,7 +270,7 @@ fn Die Parser.parse_die(Parser* p, String dieCode, RollError* err)
 
 fn ExplodingOp* Parser.parse_explosion(Parser* p, Token token, RollError* err) {
     ExplodingOp* exp = mem::new(ExplodingOp);
-
+	
 	switch (token.tok) {
 	    case EXPLODE: exp.type = EXPLODING; break;
 	    case COMPOUND: exp.type = COMPOUNDED; break;
@@ -284,13 +280,14 @@ fn ExplodingOp* Parser.parse_explosion(Parser* p, Token token, RollError* err) {
 			*err = UNEXPECTED_TOKEN;
             return null;
 	}
-
+	
 	// determine the comparison operator for the explosion op
     ComparisonOp* op = p.parse_comparison(err);
 	if (*err != NO_ERROR) {
         mem::free(exp);
 		return null;
 	}
+	
 	exp.op = op;
 
 	return exp;
@@ -299,22 +296,19 @@ fn ExplodingOp* Parser.parse_explosion(Parser* p, Token token, RollError* err) {
 fn ComparisonOp* Parser.parse_comparison(Parser* p, RollError* err) {
     ComparisonOp* cmp = mem::new(ComparisonOp);
     Token tlit = p.scan();
-
 	switch (tlit.tok) {
 	    case NUM:
             int! v = tlit.lit.to_int();
 		    if (try v) {
 		    	cmp.value = v;
-		        cmp.type = EQUALS;
-		        return cmp;
 		    }
-            *err = UNEXPECTED_TOKEN; return null;
+		    cmp.type = EQUALS;
+		    return cmp;
 	    case EQUAL: cmp.type = EQUALS; break;
 	    case GREATER: cmp.type = GREATERTHAN; break;
 	    case LESS: cmp.type = LESSTHAN; break;
-	    default: *err = UNEXPECTED_TOKEN; return null;
+	    default: *err = UNEXPECTED_TOKEN;  return cmp;
 	}
-
 	tlit = p.scan();
 	if (tlit.tok != NUM) {
 		*err = UNEXPECTED_TOKEN; return null;
@@ -325,8 +319,8 @@ fn ComparisonOp* Parser.parse_comparison(Parser* p, RollError* err) {
         cmp.value = tv;
         return cmp;
 	}
-	*err = UNEXPECTED_TOKEN;
-	return null;
+	// *err = UNEXPECTED_TOKEN;
+	return cmp;
 }
 
 fn LimitOp* Parser.parse_limit(Parser* p, Token tok, RollError* err){

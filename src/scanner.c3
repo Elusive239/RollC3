@@ -57,7 +57,7 @@ fn Token Scanner.scan(Scanner* s) {
 	case ch == ',':
 		return {GROUPSEP, string::tformat("%c", ch)};
 	case ch == R_EOF:
-		return {R_EOF, ""};
+		return {EOF, ""};
 	}
 
 	return {ILLEGAL, string::tformat("%c", ch)};
