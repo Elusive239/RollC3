@@ -16,6 +16,8 @@ struct Die {
     }
 }
 
+fn int Die.max(Die d) => d.normal ? (int) d.nd : 1;
+
 fn DieRoll Die.roll(Die d){
     if(d.normal){
         int val = random::rand_in_range(1, d.nd);

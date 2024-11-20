@@ -126,6 +126,19 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 		case COMPOUND:
 		case PENETRATE:
             roll.exploding = p.parse_explosion(tlit, err);
+			if(*err == COMPARISON_NO_INT){
+				if(roll.exploding.op == null){
+					ComparisonOp* new_op = mem::new(ComparisonOp);
+					new_op.type = EQUALS;
+					new_op.value = roll.die.max();
+					roll.exploding.op = new_op;
+					*err = NO_ERROR;
+					p.unscan();
+				}
+			}else{
+				allocator::free(allocator::temp(), roll.exploding);
+				roll.exploding = null;
+			}
             break;
 		case KEEPHIGH:
 		case KEEPLOW:
@@ -152,11 +165,11 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 			roll.failure = p.parse_comparison(err); 
 		case EOF:
 			*err = END_OF_ROLL;
-			roll.rerolls = rerolls.to_new_array();
+			roll.rerolls = rerolls.to_new_array(allocator::temp());
 			return roll; 
 		case GROUPEND:
 		case GROUPSEP:
-			roll.rerolls = rerolls.to_new_array();
+			roll.rerolls = rerolls.to_new_array(allocator::temp());
 			if (grouped) {
 				*err = END_OF_ROLL;
 				return roll;
@@ -168,7 +181,7 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 			// a combined die roll. If grouped and we get a die character AND
 			// the last token processed was a modifier, then we rewind and then
 			// raise a special error to indicate it needs attention.
-			roll.rerolls = rerolls.to_new_array();
+			roll.rerolls = rerolls.to_new_array(allocator::temp());
 			if (grouped && (lastTok.tok == PLUS || lastTok.tok == MINUS) ){
 				p.unscan();
 				roll.modifier -= mod;
@@ -269,14 +282,13 @@ fn Die Parser.parse_die(Parser* p, String dieCode, RollError* err)
 }
 
 fn ExplodingOp* Parser.parse_explosion(Parser* p, Token token, RollError* err) {
-    ExplodingOp* exp = mem::new(ExplodingOp);
-	
+    ExplodingOp* exp = allocator::new(allocator::temp(), ExplodingOp);
 	switch (token.tok) {
 	    case EXPLODE: exp.type = EXPLODING; break;
 	    case COMPOUND: exp.type = COMPOUNDED; break;
 	    case PENETRATE: exp.type = PENETRATING; break;
 	    default:
-            mem::free(exp);
+            allocator::free(allocator::temp(), exp);
 			*err = UNEXPECTED_TOKEN;
             return null;
 	}
@@ -284,8 +296,8 @@ fn ExplodingOp* Parser.parse_explosion(Parser* p, Token token, RollError* err) {
 	// determine the comparison operator for the explosion op
     ComparisonOp* op = p.parse_comparison(err);
 	if (*err != NO_ERROR) {
-        mem::free(exp);
-		return null;
+		allocator::free(allocator::temp(), op);
+		return exp;
 	}
 	
 	exp.op = op;
@@ -307,7 +319,7 @@ fn ComparisonOp* Parser.parse_comparison(Parser* p, RollError* err) {
 	    case EQUAL: cmp.type = EQUALS; break;
 	    case GREATER: cmp.type = GREATERTHAN; break;
 	    case LESS: cmp.type = LESSTHAN; break;
-	    default: *err = UNEXPECTED_TOKEN;  return cmp;
+	    default: *err = COMPARISON_NO_INT;  return cmp;
 	}
 	tlit = p.scan();
 	if (tlit.tok != NUM) {
