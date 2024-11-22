@@ -2,19 +2,19 @@ module rollc3;
 import std::io;
 
 //USE BYTE READER
-struct Scanner{
+struct TokenScanner{
     inline InStream r;
 }
 
-// new_scanner returns a new instance of scanner
-fn Scanner* new_scanner(InStream r) {
-    Scanner* scanner = allocator::new(allocator::temp(), Scanner);
-    scanner.r = r;
-    return scanner;
+// new_TokenScanner returns a new instance of TokenScanner
+fn TokenScanner* new_scanner(InStream r) {
+    TokenScanner* ts = allocator::new(allocator::temp(), TokenScanner);
+    ts.r = r;
+    return ts;
 }
 
 // Scan returns the next token and literal value
-fn Token Scanner.scan(Scanner* s) {
+fn Token TokenScanner.scan(TokenScanner* s) {
 	Rune ch = s.read();
 	switch {
 	case is_whitespace(ch):
@@ -64,7 +64,7 @@ fn Token Scanner.scan(Scanner* s) {
 }
 
 // scan_white_space consumes the current rune and all contiguous whitespace.
-fn Token Scanner.scan_white_space(Scanner* s) {
+fn Token TokenScanner.scan_white_space(TokenScanner* s) {
 	// Create a buffer and read the current Runeacter into it.
     DString buf;
 	buf.append_char(s.read());
@@ -87,7 +87,7 @@ fn Token Scanner.scan_white_space(Scanner* s) {
 }
 
 // scan_number consumes the current rune and all contiguous number runes.
-fn Token Scanner.scan_number(Scanner* s) {
+fn Token TokenScanner.scan_number(TokenScanner* s) {
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -111,7 +111,7 @@ fn Token Scanner.scan_number(Scanner* s) {
 }
 
 // scan_die_or_drop consumes the current rune and all contiguous die/drop runes.
-fn Token Scanner.scan_die_or_drop(Scanner* s){
+fn Token TokenScanner.scan_die_or_drop(TokenScanner* s){
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -149,7 +149,7 @@ fn Token Scanner.scan_die_or_drop(Scanner* s){
 }
 
 // scan_keep consumes the current rune and all contiguous keep runes.
-fn Token Scanner.scan_keep(Scanner* s){
+fn Token TokenScanner.scan_keep(TokenScanner* s){
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -178,7 +178,7 @@ fn Token Scanner.scan_keep(Scanner* s){
 }
 
 // scan_explosions consumes the current rune and all contiguous explode runes.
-fn Token Scanner.scan_explosions(Scanner* s){
+fn Token TokenScanner.scan_explosions(TokenScanner* s){
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -207,7 +207,7 @@ fn Token Scanner.scan_explosions(Scanner* s){
 }
 
 // scan_reroll consumes the current rune and all contiguous reroll runes.
-fn Token Scanner.scan_reroll(Scanner* s){
+fn Token TokenScanner.scan_reroll(TokenScanner* s){
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -232,7 +232,7 @@ fn Token Scanner.scan_reroll(Scanner* s){
 }
 
 // scan_sort consumes the current rune and all contiguous sort runes.
-fn Token Scanner.scan_sort(Scanner* s) {
+fn Token TokenScanner.scan_sort(TokenScanner* s) {
 	// Create a buffer and read the current Runeacter into it.
 	DString buf;
 	buf.append_char(s.read());
@@ -258,7 +258,7 @@ fn Token Scanner.scan_sort(Scanner* s) {
 
 // read reads the next rune from the buffered reader.
 // Returns the rune(0) if an error occurs (or io.R_EOF is returned).
-fn Rune Scanner.read(Scanner* s) {
+fn Rune TokenScanner.read(TokenScanner* s) {
 	Rune! ch = s.r.read_byte();
 	if (catch ch) {
 		return R_EOF;
@@ -267,4 +267,4 @@ fn Rune Scanner.read(Scanner* s) {
 }
 
 // unread places the previously read rune back on the reader.
-fn void Scanner.unread(Scanner* s) => s.r.pushback_byte()!!;
+fn void TokenScanner.unread(TokenScanner* s) => s.r.pushback_byte()!!;

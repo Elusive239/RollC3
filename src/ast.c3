@@ -22,7 +22,6 @@ struct Roll {
 }
 
 fn Result Roll.roll(Roll r){
-	// io::printfn("Roll is %s", r.is_group ? "group roll" : "dice roll");
     if(r.is_group) return r.gr.roll() ;
     return r.dr.roll();
 }
@@ -40,7 +39,6 @@ fn int Roll.modifier(Roll r){
 fn bool Roll.is_group(Roll r){
     return r.is_group;
 }
-
 
 def ResultList = List(<DieRoll>);
 
@@ -327,20 +325,9 @@ def FaceMap =  HashMap(<int, int>);
 
 fn void apply_limit(LimitOp* limitOp , Result* result) {
 	if (limitOp != null) {
-		// Result rolls;
-		// rolls.results = mem::temp_new_array(DieRoll, result.results.len);
-        // foreach(i, r :result.results ) rolls.results[i] = r;
-
 		// Work out limit
 		int limit = limitOp.amount;
-		// if (limit > result.len()) {
-		// 	limit = result.len();
-		// }
-
 		result.sort();
-		foreach(i, re : result.results){
-			io::printfn("%d:%d", i,  re.result);
-		}
 		if(limit >= result.len()){
 			switch (limitOp.type) {
 				case KEEPHIGHEST:
@@ -355,35 +342,14 @@ fn void apply_limit(LimitOp* limitOp , Result* result) {
 		}
 		switch (limitOp.type) {
 			case KEEPHIGHEST:
-				result.results = result.results[result.results.len-limit..]; break;
+				result.results = result.results[limit..]; break;
 			case KEEPLOWEST:
-				result.results = result.results[..limit]; break;
+				result.results = result.results[..limit-1]; break;
 			case DROPHIGHEST:
-				result.results = result.results[..result.results.len-limit]; break;
+				result.results = result.results[..limit-1]; break;
 			case DROPLOWEST:
 				result.results = result.results[limit..]; break;
 		}
-        // FaceMap m; defer m.free();
-		// foreach(r : rolls.results){
-        //     if(m.has_key(r.result)){
-        //         m.set(r.result, m[r.result]!! + 1);
-        //     }else{
-        //         m.set(r.result, 0);
-        //     }
-		// }
-
-		// DieRoll[] newResults = allocator::new_array(allocator::temp(), DieRoll, rolls.results.len);
-        // foreach(i, a : result.results ){
-        //     int! ok = m[a.result];
-		// 	if (try ok) if(ok) {
-        //         newResults[i] = a;
-		// 		m.set(a.result, m[a.result]!!-1);
-		// 	}else{
-        //         m.remove(a.result);
-        //     }
-		// }
-
-		// result.results = newResults;
 	}
 }
 
@@ -407,9 +373,6 @@ fn void apply_failure(ComparisonOp* failureOp , int modifier, Result* result) {
 	}
 }
 
-//TODO:
-// 1. Create a sort function for a array of results
-// 2. Create a reverse function for a array of results
 fn void apply_sort(SortType sortType, Result* result) {
 	switch (sortType) {
 	case UNSORTED: return;
@@ -421,15 +384,16 @@ fn void apply_sort(SortType sortType, Result* result) {
 }
 
 fn void Result.sort(Result* result, bool reverse = false){
-	for(int i = 0; i < result.len(); i++){
-		for(int y = i; y < result.len(); y++){
-			if(result.less(i, y)){ 
-				result.swap(i, y);
-			}else{
-				break;
+	for(int i = 0; i < result.len()-1; i++){
+		int min = i;
+		for(int y = i+1; y < result.len(); y++){
+			if(result.less(y, min)){ 
+				min = y;
 			}
 		}
+		result.swap(i, min);
 	}
+	
 
 	if(reverse) for(int i = 0 ; i < result.len()/2; i++){
 		int other = result.len()-1;

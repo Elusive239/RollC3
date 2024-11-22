@@ -6,13 +6,13 @@ fn int main(String[] args)
     @pool(){
         ByteReader buffer;
 
-        Parser* p = rollc3::new_parser(buffer.init(" 2d20dl1"));
+        Parser* p = rollc3::new_parser(buffer.init(" 6d6!!5kh3sd+3"));
         Roll roll = p.parse();
 		io::printfn("%s", roll.string());
 		// io::printfn("%s", roll.roll().results);
-		// foreach(i, result : roll.roll().results){
-		// 	io::printfn("%d:%d", i,  result.result);
-		// }
+		foreach(i, result : roll.roll().results){
+			io::printfn("%d:%d", i,  result.result);
+		}
         io::printfn("%d", roll.roll().total);
 		return (int) roll.err;
     };
@@ -42,7 +42,7 @@ fn void test3() @test{
         // Parser* p = rollc3::new_parser(buffer.init("3d6+1"));
         // Roll roll = p.parse();
         // io::printfn("%q", roll.roll().total);
-        rollc3::Scanner* scanner = rollc3::new_scanner(buffer.init("3d6+1"));
+        rollc3::TokenScanner* scanner = rollc3::new_scanner(buffer.init("3d6+1"));
         Token current;
         do{
             current = scanner.scan();

@@ -3,7 +3,7 @@ import std::io;
 import std::collections;
 // Parser is our dice rolling parser
 struct Parser {
-	inline Scanner* s;
+	inline TokenScanner* s;
 	struct buf {
     	inline Token token;
 		int n  ;
@@ -206,7 +206,7 @@ fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {
 	// return {(Roll*) roll, err};
 }
 
-// scan returns the next token from the underlying scanner.
+// scan returns the next token from the underlying TokenScanner.
 // If a token has been unscanned then read that instead.
 fn Token Parser.scan(Parser* p) {
     // If we have a token on the buffer, then return it.
@@ -214,7 +214,7 @@ fn Token Parser.scan(Parser* p) {
 		p.buf.n = 0;
 		return {p.buf.tok, p.buf.lit};
 	}
-    // Otherwise read the next token from the scanner.
+    // Otherwise read the next token from the TokenScanner.
     Token tlit =  p.s.scan();
     // Save it to the buffer in case we unscan later.
     p.buf.tok = tlit.tok;
