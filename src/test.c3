@@ -29,12 +29,12 @@ fn void parser_tests() @test{
 	    // Grouped combined nested multi-roll, keep high 3, succ <4, fail >3
 	    "{3d6+2d8-{4d4-1}dl}kh3<4f>3"
     };
-    // simple roll
+// simple roll
     Roll test_0 = {
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 3,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   0,
         },
     };
@@ -43,7 +43,7 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 4,
-            .die =       (FateDie)0,
+            .die =       {.normal = false, .fd = (FateDie)0},
             .modifier =   0,
         },
     };
@@ -52,7 +52,7 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 3,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   4,
         },
     };
@@ -61,7 +61,7 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 3,
-            .die =       (FateDie)0,
+            .die =       {.normal = false, .fd = (FateDie)0},
             .modifier =   4,
         },
     };
@@ -70,7 +70,7 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 3,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   6,
         },
     };
@@ -80,7 +80,7 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 1,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   0,
         },
     };
@@ -90,11 +90,9 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 4,
-            .die =(NormalDie)6,
-            .limit = &&{
-                .type = KEEPHIGHEST,
-                .amount = 3,
-            },
+            .die =  {.normal = true, .nd =(NormalDie)6},
+            .limit = new_limit(rollc3::KEEPHIGHEST, 3)
+            ,
         },
     };
   
@@ -103,20 +101,11 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 6,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   3,
-            .sort =       DESCENDING,
-            .limit = &&{
-                .type =   KEEPHIGHEST,
-                .amount = 3,
-            },
-            .exploding = &&{
-                .type = COMPOUNDED,
-                .comparisonop = &&{
-                    .type =  EQUALS,
-                    .value = 5,
-                },
-            },
+            .sort =       rollc3::DESCENDING,
+            .limit = new_limit(rollc3::KEEPHIGHEST, 3),
+            .exploding = new_exploding(rollc3::COMPOUNDED, rollc3::KEEPHIGHEST, 5),
         },
     };
 
@@ -125,30 +114,13 @@ fn void parser_tests() @test{
         .is_group = false,
         .dr = /*(DiceRoll)*/{
             .multiplier = 6,
-            .die =       (NormalDie)6,
+            .die =       {.normal = true, .nd = (NormalDie)6},
             .rerolls = {
-                .rerollop = {
-                    .comparisonop = &&{
-                        .type =  EQUALS,
-                        .value = 2,
-                    },
-                },
-                .rerollop = {
-                    .comparisonop = &&{
-                        .type =  EQUALS,
-                        .value = 4,
-                    },
-                    .once = true,
-                },
+                new_reroll(false, rollc3::EQUALS, 2),
+                new_reroll(true, rollc3::EQUALS, 4),
             },
-            .success = &&{
-                .type =  GREATERTHAN,
-                .value = 3,
-            },
-            .failure = &&{
-                .type =  EQUALS,
-                .value = 1,
-            },
+            .success = new_comparison(rollc3::GREATERTHAN, 3),
+            .failure =  new_comparison(rollc3::EQUALS, 1),
         },
     };
 
@@ -156,11 +128,12 @@ fn void parser_tests() @test{
     Roll test_9 = {
         .is_group = true,
         .gr = /*(GroupedRoll)*/{
+            .rolls = {
             {
                 .is_group = false,
                 .dr = /*(DiceRoll)*/{
                     .multiplier = 3,
-                    .die =       (NormalDie)6,
+                    .die =       {.normal = true, .nd = (NormalDie)6},
                     .modifier =   4,
                 }
             },
@@ -168,29 +141,17 @@ fn void parser_tests() @test{
                 .is_group = false,
                 .dr = /*(DiceRoll)*/{
                     .multiplier = 2,
-                    .die =       (NormalDie)8,
+                    .die =       {.normal = true, .nd = (NormalDie)8},
                 }
-            },
-        },
-        .limit = &&{
-            .amount = 1,
-            .type =   DROPLOWEST,
-        },
-        .success = &&{
-            .type =  EQUALS,
-            .value = 1,
-        },
-        .failure = &&{
-            .type =  GREATERTHAN,
-            .value = 5,
-        },
+            }},
+        .limit = new_limit(rollc3::DROPLOWEST, 1),
+        .success = new_comparison(rollc3::EQUALS, 1),
+        .failure = new_comparison(rollc3::GREATERTHAN, 5),
         .combined = false,
+        },
     };
     // grouped combined nested multi-roll, keep high 3, succ <4, fail >3
-    LimitOp* op = &&{
-        .amount = 1,
-        .type =   DROPLOWEST,
-    };
+    LimitOp op = {    .amount = 1,    .type =   rollc3::DROPLOWEST};
     Roll test_10 = {
         .is_group = true,
         .gr = {
@@ -200,14 +161,14 @@ fn void parser_tests() @test{
                 .is_group = false,
                 .dr = /*(DiceRoll)*/{
                     .multiplier = 3,
-                    .die =       (NormalDie)6,
+                    .die =       {.normal = true, .nd = (NormalDie)6},
                 }
             },
             {
                 .is_group = false,
                 .dr = /*(DiceRoll)*/{
                     .multiplier = 2,
-                    .die =       (NormalDie)8,
+                    .die =       {.normal = true, .nd = (NormalDie)8},
                 }
             },
             {
@@ -217,33 +178,25 @@ fn void parser_tests() @test{
                         .is_group = false,
                         .dr = /*(DiceRoll)*/{
                             .multiplier = 4,
-                            .die =       (NormalDie)4,
+                            .die =       {.normal = true, .nd = (NormalDie)4},
                             .modifier =   -1,
                         }
                     }},
-                    .limit = op,
+                    .limit = &op,
                     .combined = true,
                     .negative = true,
                 }
             },
         },
-        .limit = &&{
-            .amount = 3,
-            .type =   KEEPHIGHEST,
-        },
-        .success = &&{
-            .type =  LESSTHAN,
-            .value = 4,
-        },
-        .failure = &&{
-            .type =  GREATERTHAN,
-            .value = 3,
-        },
+        .limit = new_limit(rollc3::KEEPHIGHEST, 3)
+        ,
+        .success = new_comparison(rollc3::LESSTHAN, 4),
+        .failure = new_comparison(rollc3::GREATERTHAN, 3),
         .combined = true,
         }
     };
 
-    Roll[] tests = {test_0, test_1, test_2, test_3, test_4, test_5, test_6, test_7, test_8, test_9, test_10, test_11};
+    Roll[] tests = {test_0, test_1, test_2, test_3, test_4, test_5, test_6, test_7, test_8, test_9, test_10};
 
     String[] roll_give_err = {"foo", "dX",  "d4--","3d4d5",};
     RollError[] errs = {rollc3::UNEXPECTED_TOKEN, rollc3::UNKNOWN_DIE,  rollc3::UNEXPECTED_TOKEN,  rollc3::UNEXPECTED_TOKEN};
@@ -254,6 +207,35 @@ fn void parser_tests() @test{
             assert(r.err == err);
         };
     }
+}
+
+macro RerollOp new_reroll(bool once, ComparisonType t, int v){
+    RerollOp new;
+    new.op = new_comparison(t, v);
+    new.once = once;
+    return new;
+}
+
+
+macro LimitOp* new_limit(LimitType t, int v){
+    LimitOp* new = allocator::new(allocator::temp(), LimitOp);
+    new.amount = v;
+    new.type = t;
+    return new;
+}
+
+macro ExplodingOp* new_exploding(ExplodingType t1, ComparisonType t2, int v){
+    ExplodingOp* new = allocator::new(allocator::temp(), ExplodingOp);
+    new.op = new_comparison(t2, v);
+    new.type = t1;
+    return new;
+}
+
+macro ComparisonOp* new_comparison(ComparisonType t, int v){
+    ComparisonOp* new = allocator::new(allocator::temp(), ComparisonOp);
+    new.type = t;
+    new.value = v;
+    return new;
 }
 
 module rollc3::assertion;

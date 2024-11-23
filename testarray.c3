@@ -60,10 +60,8 @@
         .dr = /*(DiceRoll)*/{
             .multiplier = 4,
             .die =  {.normal = true, .nd =(NormalDie)6},
-            .limit = &&{
-                .type = KEEPHIGHEST,
-                .amount = 3,
-            },
+            .limit = new_limit(rollc3::KEEPHIGHEST, 3)
+            ,
         },
     };
   
@@ -74,18 +72,9 @@
             .multiplier = 6,
             .die =       {.normal = true, .nd = (NormalDie)6},
             .modifier =   3,
-            .sort =       DESCENDING,
-            .limit = &&{
-                .type =   KEEPHIGHEST,
-                .amount = 3,
-            },
-            .exploding = &&{
-                .type = COMPOUNDED,
-                .op = &&{
-                    .type =  EQUALS,
-                    .value = 5,
-                },
-            },
+            .sort =       rollc3::DESCENDING,
+            .limit = new_limit(rollc3::KEEPHIGHEST, 3),
+            .exploding = new_exploding(rollc3::COMPOUNDED, rollc3::KEEPHIGHEST, 5),
         },
     };
 
@@ -96,28 +85,11 @@
             .multiplier = 6,
             .die =       {.normal = true, .nd = (NormalDie)6},
             .rerolls = {
-               {
-                    .op = &&{
-                        .type =  rollc3::EQUALS,
-                        .value = 2,
-                    },
-                },
-                {
-                    .op = &&{
-                        .type =  rollc3::EQUALS,
-                        .value = 4,
-                    },
-                    .once = true,
-                },
+                new_reroll(false, rollc3::EQUALS, 2),
+                new_reroll(true, rollc3::EQUALS, 4),
             },
-            .success = &&{
-                .type =  rollc3::GREATERTHAN,
-                .value = 3,
-            },
-            .failure = &&{
-                .type =  rollc3::EQUALS,
-                .value = 1,
-            },
+            .success = new_comparison(rollc3::GREATERTHAN, 3),
+            .failure =  new_comparison(rollc3::EQUALS, 1),
         },
     };
 
@@ -125,6 +97,7 @@
     Roll test_9 = {
         .is_group = true,
         .gr = /*(GroupedRoll)*/{
+            .rolls = {
             {
                 .is_group = false,
                 .dr = /*(DiceRoll)*/{
@@ -139,21 +112,12 @@
                     .multiplier = 2,
                     .die =       {.normal = true, .nd = (NormalDie)8},
                 }
-            },
-        },
-        .limit = &&{
-            .amount = 1,
-            .type =   rollc3::DROPLOWEST,
-        },
-        .success = &&{
-            .type =  rollc3::EQUALS,
-            .value = 1,
-        },
-        .failure = &&{
-            .type =  rollc3::GREATERTHAN,
-            .value = 5,
-        },
+            }},
+        .limit = new_limit(rollc3::DROPLOWEST, 1),
+        .success = new_comparison(rollc3::EQUALS, 1),
+        .failure = new_comparison(rollc3::GREATERTHAN, 5),
         .combined = false,
+        },
     };
     // grouped combined nested multi-roll, keep high 3, succ <4, fail >3
     LimitOp op = {    .amount = 1,    .type =   rollc3::DROPLOWEST};
@@ -187,24 +151,16 @@
                             .modifier =   -1,
                         }
                     }},
-                    .limit = &&op,
+                    .limit = &op,
                     .combined = true,
                     .negative = true,
                 }
             },
         },
-        .limit = &&{
-            .amount = 3,
-            .type =   rollc3::KEEPHIGHEST,
-        },
-        .success = &&{
-            .type =  rollc3::LESSTHAN,
-            .value = 4,
-        },
-        .failure = &&{
-            .type =  rollc3::GREATERTHAN,
-            .value = 3,
-        },
+        .limit = new_limit(rollc3::KEEPHIGHEST, 3)
+        ,
+        .success = new_comparison(rollc3::LESSTHAN, 4),
+        .failure = new_comparison(rollc3::GREATERTHAN, 3),
         .combined = true,
         }
     };
