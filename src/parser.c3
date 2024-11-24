@@ -22,7 +22,8 @@ fn Parser* new_parser(InStream r) {
 fn Roll Parser.parse(Parser* p) {
 	// tok token should be a NUM or a DIE
     Token tlit = p.scan_ignore_whitespace();
-    Roll r =  p.parse_roll(tlit, false);
+	RollError err;
+    Roll r =  p.parse_roll(tlit, false, &err);
 	if(r.err == NO_ERROR){
 		return r;
 	}
@@ -30,26 +31,206 @@ fn Roll Parser.parse(Parser* p) {
 }
 
 // parse_roll gets a roll of any type
-fn Roll Parser.parse_roll(Parser* p, Token tlit, bool grouped) {
-	RollError err;
+fn Roll Parser.parse_roll(Parser* p, Token tlit, bool grouped, RollError* err) {
 	switch( tlit.tok ){
 	    case NUM:
         case DIE:
-			DiceRoll* dr = p.parse_dice_roll(grouped, &err);
+			DiceRoll* dr = p.parse_dice_roll(grouped, err);
 			if(dr){
-				return {false, *dr, err == END_OF_ROLL ? 0 : err};
+				return {false, *dr, *err == END_OF_ROLL ? 0 : *err};
 			}
 			break;
 	    	// return 
-	    // case GROUPSTART:
+	    case GROUPSTART:
+			GroupedRoll* gr = p.parse_grouped_roll(grouped, err);
+			if(gr){
+				Roll roll;
+				roll.is_group = true;
+				roll.gr =  *gr;
+				roll.err = END_OF_ROLL ? 0 : *err;
+				return roll;
+			}
+			break;
 	    // 	return p.parse_grouped_roll(grouped);
 	    default:
             return {false, {}, UNEXPECTED_TOKEN};
 	}
-    return {false, {}, err};
+    return {false, {}, *err};
 }
 
 def ReRerollList = List(<RerollOp>);
+
+// parseGrouped parses a GroupedRoll statement
+fn GroupedRoll* Parser.parse_grouped_roll(Parser* p, bool grouped, RollError* err) {
+    GroupedRoll* roll = allocator::new(allocator::temp(), GroupedRoll);
+	roll.combined = true;
+    List(<Roll>) rolls; defer rolls.free();
+    bool negative;
+    int multiplier;
+
+    while(*err != NO_ERROR){
+        Token tlit = p.scan_ignore_whitespace();
+        Roll r = p.parse_roll(tlit, true, err);
+
+        if(multiplier != 0){
+            if(r.is_group){
+                if (multiplier < 0) {
+		    		r.gr.negative = true;
+		    	}
+            }else{
+		    	r.dr.multiplier = multiplier;
+            }
+            multiplier = 0;
+        }
+        roll.combined = true;
+
+        if (negative) {
+            if(r.is_group){
+                r.gr.negative = true;
+            }else{
+				r.dr.multiplier *= -1;
+            }
+		}
+
+        if (*err != NO_ERROR) {
+			negative = false;
+			// We got an ambiguous modifier, which means the *next* roll needs
+			// to use this modifier as it's multiplier, so store it for later
+            if (r.is_group ? r.gr.rolls.len == 0 : false) {
+				return null;
+			}
+			if(*err == AMBIGUOUS_MODIFIER){
+				multiplier = p.buf.mod;
+				p.buf.mod = 0;
+				*err = NO_ERROR;
+				// Rollback
+				p.unscan();
+			}else{
+				// Rollback
+				p.unscan();
+				Token tlit2 = p.scan_ignore_whitespace();
+				// Handle separators of the group
+				switch (tlit2.tok) {
+				case PLUS:
+				case MINUS:
+					negative = true;
+				case GROUPSEP:
+					// If we have multiple rolls and are in combined mode when we
+					// get a separator, then this is an invalid grouped roll
+					if (roll.rolls.len > 1 && roll.combined ){
+						return roll; 
+					}
+					// We aren't combining if grouping with the GROUPSEP delimiter
+					roll.combined = false;
+					// We've finished parsing a roll, so reset err for loop
+					*err = NO_ERROR;
+				case GROUPSTART:
+					// We've finished parsing a roll, so reset err for loop and
+					// unscan again to start us off on the new group
+					p.unscan();
+					*err = NO_ERROR;
+				case GROUPEND:
+					// We've exited the group, so leave loop by letting error fall
+					// through
+					*err = END_OF_ROLL;
+					return roll;
+				default:
+					// Otherwise it IS an error
+					return roll; 
+				}
+			}
+		}
+
+        // If we've ended up with a dummy roll for some reason, don't add it
+        rolls.push(r);
+    }
+
+	// We now have the collection of rolls within the grouped roll, now we need
+	// to apply the modifiers to it
+	while(true) {
+		// Read a modifier
+		Token tlit = p.scan_ignore_whitespace();
+
+		// Handle modifier or EOF
+		switch (tlit.tok ){
+			case PLUS: 
+			case MINUS:
+			int mod =  p.parse_modifier(tlit, err);
+			if (*err == NO_ERROR) {
+				roll.modifier += mod;
+			} else {
+				if (tlit.tok == MINUS) {
+					mod = -1;
+				}
+
+				p.unscan();
+				tlit = p.scan_ignore_whitespace();
+				switch (tlit.tok) {
+					case EOF:
+						*err = END_OF_ROLL;
+						return roll;
+					case GROUPSTART:
+						if (grouped) {
+							// Technically this is an end of roll, but we want to
+							// capture the multiplier to determine the sign of the
+							// next term
+							*err = AMBIGUOUS_MODIFIER;
+							p.buf.mod = mod;
+							return roll;
+						}
+						*err = UNEXPECTED_TOKEN;
+						return null;
+					case GROUPEND: 
+					case GROUPSEP:
+						if (grouped) {
+							*err = END_OF_ROLL;
+							return roll;
+						}
+						*err = UNEXPECTED_TOKEN;
+						return null;
+				default:
+					return null;
+				}
+			}
+		case KEEPHIGH: 
+		case KEEPLOW: 
+		case DROPHIGH:
+		case DROPLOW:
+			roll.limit = p.parse_limit(tlit, err);
+		case GREATER: 
+		case LESS: 
+		case EQUAL:
+			p.unscan();
+			roll.success = p.parse_comparison(err);
+		case FAILURES:
+			roll.failure = p.parse_comparison(err);
+		case EOF:
+			*err = END_OF_ROLL;
+			return roll;
+		case GROUPSEP:
+			if (grouped) {
+				*err = END_OF_ROLL;
+				return roll;
+			}
+			*err = UNEXPECTED_TOKEN;
+			return null;
+		case GROUPEND:
+			p.unscan();
+			*err = NO_ERROR;
+			return roll;
+		default:
+			*err = UNEXPECTED_TOKEN;
+			return null;
+		}
+
+		// If there is an error, lets bail out
+		if (*err != NO_ERROR) {
+			return null;
+		}
+	}
+
+	// return roll;
+}
 
 // parse_dice_roll parses a DiceRoll statement
 fn DiceRoll* Parser.parse_dice_roll(Parser* p, bool grouped, RollError* err)  {

@@ -195,16 +195,41 @@ fn void parser_tests() @test{
         .combined = true,
         }
     };
+    @pool(){
+        Parser* p = rollc3::new_parser(buffer.init(rolls_strings[0]));
+        assertion::assert_any_roll(test_0,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[1]));
+        assertion::assert_any_roll(test_1,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[2]));
+        assertion::assert_any_roll(test_2,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[3]));
+        assertion::assert_any_roll(test_3,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[4]));
+        assertion::assert_any_roll(test_4,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[5]));
+        assertion::assert_any_roll(test_5,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[6]));
+        assertion::assert_any_roll(test_6,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[7]));
+        assertion::assert_any_roll(test_7,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[8]));
+        assertion::assert_any_roll(test_8,p.parse());
+        p = rollc3::new_parser(buffer.init(rolls_strings[9]));
+        assertion::assert_any_roll(test_9,p.parse()) ;
+        p = rollc3::new_parser(buffer.init(rolls_strings[10]));
+        assertion::assert_any_roll(test_10,p.parse());
+    };
+}
 
-    Roll[] tests = {test_0, test_1, test_2, test_3, test_4, test_5, test_6, test_7, test_8, test_9, test_10};
-
+fn void error_tests() @test{
+    ByteReader buffer;
     String[] roll_give_err = {"foo", "dX",  "d4--","3d4d5",};
     RollError[] errs = {rollc3::UNEXPECTED_TOKEN, rollc3::UNKNOWN_DIE,  rollc3::UNEXPECTED_TOKEN,  rollc3::UNEXPECTED_TOKEN};
     foreach(index, err : errs){
         @pool(){
             Parser* p = rollc3::new_parser(buffer.init(roll_give_err[index]));
             Roll r = p.parse();
-            assert(r.err == err);
+            assert(r.err == err, "Expected %d, got %d", r.err, err);
         };
     }
 }
@@ -241,8 +266,8 @@ macro ComparisonOp* new_comparison(ComparisonType t, int v){
 module rollc3::assertion;
 
 fn void assert_any_roll(Roll a, Roll b){
-    assert(a.is_group != b.is_group) ;
-    assert(a.err != b.err) ;
+    assert(a.is_group == b.is_group, "Expected %d, got %d", (int)a.is_group, (int)b.is_group) ;
+    assert(a.err == b.err, "Expected %d, got %d", a.err, b.err) ;
     if(a.is_group){
         assert_grouped_roll(a.gr, b.gr);
     }else{
@@ -251,8 +276,8 @@ fn void assert_any_roll(Roll a, Roll b){
 }
 
 fn void assert_dice_roll(DiceRoll a, DiceRoll b){
-    assert(a.multiplier != b.multiplier) ;
-    assert(a.modifier != b.modifier) ;
+    assert(a.multiplier == b.multiplier) ;
+    assert(a.modifier == b.modifier) ;
     assert_any_die(a.die, b.die) ;
     // 	ExplodingOp* exploding;
     assert_exploding(a.exploding, b.exploding) ;
@@ -263,22 +288,22 @@ fn void assert_dice_roll(DiceRoll a, DiceRoll b){
     // 	ComparisonOp* failure;
     assert_comparison(a.failure, b.failure) ;
     // 	RerollOp[] rerolls;
-    assert(a.rerolls.len != b.rerolls.len) ;
+    assert(a.rerolls.len == b.rerolls.len) ;
     foreach(index, reroll : a.rerolls){
         assert_reroll(a.rerolls[index], b.rerolls[index]) ;
     }
     // 	SortType sort;
-    assert(a.sort != b.sort) ;
+    assert(a.sort == b.sort) ;
 }
 
 fn void assert_grouped_roll(GroupedRoll a, GroupedRoll b){
     // Roll[] rolls; 
-    assert(a.rolls.len != b.rolls.len) ;
+    assert(a.rolls.len == b.rolls.len) ;
     foreach(index, rolls : a.rolls){
         assert_any_roll(a.rolls[index], b.rolls[index]) ;
     }
 	// int modifier;
-    assert(a.modifier != b.modifier) ;
+    assert(a.modifier == b.modifier) ;
 	// LimitOp* limit;
     assert_limit(a.limit, b.limit) ;
 	// ComparisonOp* success;
@@ -286,9 +311,9 @@ fn void assert_grouped_roll(GroupedRoll a, GroupedRoll b){
     // ComparisonOp* failure;
     assert_comparison(a.failure, b.failure) ;
 	// bool combined;
-    assert(a.combined != b.combined) ;
+    assert(a.combined == b.combined) ;
 	// bool negative;
-    assert(a.negative != b.negative) ;
+    assert(a.negative == b.negative) ;
 }
 
 fn void assert_reroll(RerollOp a, RerollOp b){
@@ -304,7 +329,7 @@ fn void assert_exploding(ExplodingOp* a, ExplodingOp* b){
 
 fn void assert_comparison(ComparisonOp* a, ComparisonOp* b){
     assert(((a != null && b != null) || a == b && a == null));
-    assert(a.type == b.type);
+    assert(a.type == b.type, "Expected %d, got %d", a.type, b.type);
     assert(a.value == b.value);
 }
 
@@ -315,7 +340,7 @@ fn void assert_limit(LimitOp* a, LimitOp* b){
 }
 
 fn void assert_any_die(Die a, Die b){
-    assert(a.normal != b.normal) ;
+    assert(a.normal == b.normal) ;
     if(a.normal) {assert_normal_die(a.nd, b.nd);}
     else { assert_fate_die(a.fd, b.fd);}
 }

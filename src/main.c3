@@ -18,36 +18,36 @@ fn int main(String[] args)
     };
 }
 
-fn void test1() @test{
-    ByteReader buffer;
-    buffer.init("3d6+1");
-    while(buffer.available()!!){
-        char c= buffer.read_byte()!!;
-        io::printf("%c", c);
-    }
-}
+// fn void test1() @test{
+//     ByteReader buffer;
+//     buffer.init("3d6+1");
+//     while(buffer.available()!!){
+//         char c= buffer.read_byte()!!;
+//         io::printf("%c", c);
+//     }
+// }
 
-fn void test2() @test{
-    ByteReader buffer;
-    InStream stream = buffer.init("3d6+1");
-    while(stream.available()!!){
-        char c= stream.read_byte()!!;
-        io::printf("%c", c);
-    }
-}
+// fn void test2() @test{
+//     ByteReader buffer;
+//     InStream stream = buffer.init("3d6+1");
+//     while(stream.available()!!){
+//         char c= stream.read_byte()!!;
+//         io::printf("%c", c);
+//     }
+// }
 
-fn void test3() @test{
-    @pool(){
-        ByteReader buffer;
-        // Parser* p = rollc3::new_parser(buffer.init("3d6+1"));
-        // Roll roll = p.parse();
-        // io::printfn("%q", roll.roll().total);
-        rollc3::TokenScanner* scanner = rollc3::new_scanner(buffer.init("3d6+1"));
-        Token current;
-        do{
-            current = scanner.scan();
-            io::printfn("Token: {%s, %s}", current.tok, current.lit);
-        }
-        while(current.tok != rollc3::ILLEGAL);
-    };
-}
+// fn void test3() @test{
+//     @pool(){
+//         ByteReader buffer;
+//         // Parser* p = rollc3::new_parser(buffer.init("3d6+1"));
+//         // Roll roll = p.parse();
+//         // io::printfn("%q", roll.roll().total);
+//         rollc3::TokenScanner* scanner = rollc3::new_scanner(buffer.init("3d6+1"));
+//         Token current;
+//         do{
+//             current = scanner.scan();
+//             io::printfn("Token: {%s, %s}", current.tok, current.lit);
+//         }
+//         while(current.tok != rollc3::ILLEGAL);
+//     };
+// }
