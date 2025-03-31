@@ -11,3 +11,20 @@ def Rune = char;
 def Token = int;
 
 def TokenLiteral = Tuple(<Token, String>);
+
+// DieRoll is the result of a die roll
+struct DieRoll{
+	int result; 
+	String symbol;
+}
+
+// Die is the interface allDice must confirm to
+interface Die {
+	fn DieRoll roll();
+	fn String to_string(Allocator);
+}
+
+// FateDie is a die representing the typical Fate/Fudge die
+distinct FateDie (Die) = int;
+// NormalDie is a die representing an N-sided die
+distinct NormalDie (Die) = int;
