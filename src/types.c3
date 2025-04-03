@@ -25,6 +25,7 @@ interface Die {
 }
 
 // FateDie is a die representing the typical Fate/Fudge die
-distinct FateDie (Die) = int;
+distinct FateDie (Die, Printable) = int;
 // NormalDie is a die representing an N-sided die
-distinct NormalDie (Die) = int;
+distinct NormalDie (Die, Printable) = int;
+

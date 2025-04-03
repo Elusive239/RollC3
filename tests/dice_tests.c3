@@ -33,7 +33,7 @@ fn void die_roll_tests() @test {
 	foreach (i, tt : tests) {
 		random::srand(tt.seed);
 		DieRoll result = tt.die.roll();
-        defer result.free();
+        defer result.symbol.free();
         assert(tt.res == result.result, "%d. result mismatch: exp=%d got=%d", i, tt.res, result.result);
         assert(tt.sym == result.symbol, "%d. symbol mismatch: exp=%s got=%s", i, tt.sym, result.symbol);
 	}

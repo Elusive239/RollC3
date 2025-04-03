@@ -1,9 +1,10 @@
 module roll;
 import std::math::random;
 
-fn void DieRoll.free(DieRoll* dieroll) {
-    if(dieroll.symbol.len > 0) dieroll.symbol.free();
-}
+// fn void DieRoll.free(DieRoll* dieroll) {
+//     if(dieroll.symbol.len > 0) dieroll.symbol.free();
+// 	dieroll.symbol = "";
+// }
 
 // FateBlank is the symbol for a blank Fate die face
 const String FATE_BLANK = "☐";
