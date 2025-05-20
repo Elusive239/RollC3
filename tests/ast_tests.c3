@@ -106,8 +106,8 @@ fn void test_dice_roll_roll () @test {
 					.value = 1,
 				},
 			},
-			.res =  int[]{3, 2 , 40},
-			.totl = 45,
+			.res =  int[]{3, 2 , 37},
+			.totl = 42,
 		},
 
 		//8. Compounded Die (6) on <2s
@@ -122,8 +122,8 @@ fn void test_dice_roll_roll () @test {
 					.value = 2,
 				},
 			},
-			.res =  int[]{6, 1, 1},
-			.totl = 8,
+			.res =  int[]{6, 1, 5},
+			.totl = 12,
 		},
 
 		//9. Penetrating Die (6) on 5s
@@ -183,8 +183,8 @@ fn void test_dice_roll_roll () @test {
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 3,
 			},
-			.res =  int[]{2},
-			.totl = 2,
+			.res =  int[]{4},
+			.totl = 4,
 		},
 
 		//12. Limit (6) to the lowest 3
@@ -196,8 +196,8 @@ fn void test_dice_roll_roll () @test {
 				.type =   roll::KEEP_LOWEST,
 				.amount = 3,
 			},
-			.res =  int[]{3, 1, 1},
-			.totl = 5,
+			.res =  int[]{2, 4, 1, 1},
+			.totl = 8,
 		},
 
 		//13. Limit (6) and drop lowest 3
@@ -209,8 +209,8 @@ fn void test_dice_roll_roll () @test {
 				.type =   roll::DROP_LOWEST,
 				.amount = 3,
 			},
-			.res =  int[]{5},
-			.totl = 5,
+			.res =  int[]{2, 4, 1},
+			.totl = 7,
 		},
 
 		//14. Limit (6) and drop highest 3
@@ -222,8 +222,8 @@ fn void test_dice_roll_roll () @test {
 				.type =   roll::DROP_HIGHEST,
 				.amount = 3,
 			},
-			.res =  int[]{1},
-			.totl = 1,
+			.res =  int[]{4},
+			.totl = 4,
 		},
 
 		//15. Reroll (6) on a 1
@@ -240,8 +240,8 @@ fn void test_dice_roll_roll () @test {
 					.once = false,
 				},
 			},
-			.res =  int[]{6, 5, 2, 5},
-			.totl = 18,
+			.res =  int[]{5, 6, 5, 5},
+			.totl = 21,
 		},
 
 		//16. Reroll (6) on values > 4
@@ -258,8 +258,8 @@ fn void test_dice_roll_roll () @test {
 					.once = false,
 				},
 			},
-			.res =  int[]{1, 1, 2, 2},
-			.totl = 6,
+			.res =  int[]{2, 1, 4, 1},
+			.totl = 8,
 		},
 
 		//17. Reroll (6) on values < 3
@@ -276,8 +276,8 @@ fn void test_dice_roll_roll () @test {
 					.once = false,
 				},
 			},
-			.res =  int[]{6, 5, 6, 5},
-			.totl = 22,
+			.res =  int[]{5, 6, 5, 5},
+			.totl = 21,
 		},
 
 		//18. Reroll (6) on values < 4, but once only
@@ -294,8 +294,8 @@ fn void test_dice_roll_roll () @test {
 					.once = true,
 				},
 			},
-			.res =  int[]{5, 3, 3, 5},
-			.totl = 16,
+			.res =  int[]{6, 4, 4, 6}, 
+			.totl = 20,
 		},
 
 		//19. Reroll (6) on 1s and 2s, but once only
@@ -319,28 +319,28 @@ fn void test_dice_roll_roll () @test {
 					.once = true,
 				},
 			},
-			.res =  int[]{6, 5, 2, 5},
-			.totl = 18,
+			.res =  int[]{5, 6, 5, 5},
+			.totl = 21,
 		},
 
 		//20. Normal Die (3) sorted ascending
-		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{1, 3, 3}, .totl = 7, .sort = roll::ASCENDING},
+		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{3, 2, 1}, .totl = 6, .sort = roll::ASCENDING},
 
 		//21. Normal Die (3) sorted descending
-		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{3, 3, 1}, .totl = 7, .sort = roll::DESCENDING},
+		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{1, 2, 3}, .totl = 6, .sort = roll::DESCENDING},
 
 		//22. Normal Die (6) successes on 6s
 		{
-			.seed = 1,
+			.seed = 5,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
-			.totl = 2,
+			.res =  int[]{6, 2, 1},
+			.totl = 1,
 			.succ = &&ComparisonOp{
 				.type =  roll::EQUALS,
 				.value = 6,
 			},
-			.scnt = 2,
+			.scnt = 1,
 		},
 
 		//23. Normal Die (6) successes on <5
@@ -348,13 +348,13 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
-			.totl = 1,
+			.res =  int[]{3, 2, 5},
+			.totl = 2,
 			.succ = &&ComparisonOp{
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
-			.scnt = 1,
+			.scnt = 2,
 		},
 
 		//24. Normal Die (6) successes on >3
@@ -362,21 +362,21 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
-			.totl = 3,
+			.res =  int[]{3, 2, 5},
+			.totl = 1,
 			.succ = &&ComparisonOp{
 				.type =  roll::GREATER_THAN,
 				.value = 3,
 			},
-			.scnt = 3,
+			.scnt = 1,
 		},
 
 		//25. Normal Die (6) successes on 6s, failures on 4s
 		{
-			.seed = 1,
+			.seed = 12,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
+			.res =  int[]{6, 1, 1},
 			.totl = 1,
 			.succ = &&ComparisonOp{
 				.type =  roll::EQUALS,
@@ -394,8 +394,8 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
-			.totl = -1,
+			.res =  int[]{3,2 , 5},
+			.totl = 2,
 			.succ = &&ComparisonOp{
 				.type =  roll::LESS_THAN,
 				.value = 5,
@@ -404,7 +404,7 @@ fn void test_dice_roll_roll () @test {
 				.type =  roll::GREATER_THAN,
 				.value = 5,
 			},
-			.scnt = -1,
+			.scnt = 2,
 		},
 
 		//27. Normal Die (6) successes on >4, failures <5
@@ -412,8 +412,8 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 4, 6},
-			.totl = 1,
+			.res =  int[]{3, 2, 5},
+			.totl = -1,
 			.succ = &&ComparisonOp{
 				.type =  roll::GREATER_THAN,
 				.value = 4,
@@ -422,16 +422,16 @@ fn void test_dice_roll_roll () @test {
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
-			.scnt = 1,
+			.scnt = -1,
 		},
 
 		//28. Normal Die (6) successes on =1, failures =2
 		{
-			.seed = 0,
+			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{1, 1, 2},
-			.totl = 1,
+			.res =  int[]{3, 2, 5},
+			.totl = -1,
 			.succ = &&ComparisonOp{
 				.type =  roll::EQUALS,
 				.value = 1,
@@ -440,7 +440,7 @@ fn void test_dice_roll_roll () @test {
 				.type =  roll::EQUALS,
 				.value = 2,
 			},
-			.scnt = 1,
+			.scnt = -1,
 		},
 	};
 
@@ -963,8 +963,8 @@ fn void test_group_roll_roll () @test {
 				},
 			},
 			.mod =  2,
-			.res =  int[]{20, 1},
-			.totl = 23,
+			.res =  int[]{20, 13},
+			.totl = 35,
 			.lmit = &&LimitOp{
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 1,
@@ -991,8 +991,8 @@ fn void test_group_roll_roll () @test {
 				},
 			},
 			.mod =  2,
-			.res =  int[]{9, 10},
-			.totl = 21,
+			.res =  int[]{12, 11},
+			.totl = 25,
 			.comb = true,
 			.lmit = &&LimitOp{
 				.type =   roll::KEEP_HIGHEST,

@@ -239,6 +239,7 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
             do_reroll= false;
             foreach  (reroll : dr.rerolls ) {
                 for (;reroll.comparison_op.match(roll.result); ) {
+					mem::free(roll.symbol);
                     *roll = dr.die.roll();
                     result.results[i] = *roll;
                     if (reroll.once) {
@@ -271,8 +272,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
             for(int i =0 ; i < len; i++){
                 DieRoll roll = result.results[i];
 				while (dr.exploding.comparison_op.match(roll.result)) {
-					compound += roll.result;
 					roll = dr.die.roll();
+					compound += roll.result;
+					mem::free(roll.symbol);
 				}
 			}
 			result.results.push (DieRoll{.result = compound, .symbol = string::format("%d", compound, allocator: allocator::heap()) }); 
@@ -282,8 +284,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
                 DieRoll roll = result.results[i];
 				for (;dr.exploding.comparison_op.match(roll.result);) {
 					roll = dr.die.roll();
-					DieRoll newroll = roll;
-					newroll.result--;
+					mem::free(roll.symbol);
+					DieRoll newroll;
+					newroll.result = roll.result-1;
 					newroll.symbol = string::format("%d", newroll.result, allocator: allocator::heap());
 					result.results.push(newroll);
 				}
@@ -615,6 +618,42 @@ fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modi
 	}
 }
 
-fn void sort(Result* result, bool reverse = false){
+// insertion stort: https://www.geeksforgeeks.org/insertion-sort-algorithm/
+fn void sort(Result* result, bool reverse = false) {
+    List(<DieRoll>)* rolls = &result.results;
+    int len = (int) rolls.len();
+    for(int i =1; i < len; i++){
+        DieRoll key = (*rolls)[i];
+        int j = i-1;
+        
+        if(reverse){
+            while (j >= 0 && (*rolls)[j].result > key.result) {
+                (*rolls)[(usz)(j + 1)] = (*rolls)[j];
+                j = j - 1;
+            }
+        } else {
+            while (j >= 0 && (*rolls)[j].result < key.result) {
+                (*rolls)[(usz)(j + 1)] = (*rolls)[j];
+                j = j - 1;
+            }
+        }
 
+        (*rolls)[(usz)(j + 1)] = key;
+    }
+
+    /*
+        for (int i = 1; i < n; ++i) {
+            int key = arr[i];
+            int j = i - 1;
+
+            /* Move elements of arr[0..i-1], that are
+            greater than key, to one position ahead
+            of their current position */
+            while (j >= 0 && arr[j] > key) {
+                arr[j + 1] = arr[j];
+                j = j - 1;
+            }
+            arr[j + 1] = key;
+        }
+    */
 }

@@ -39,7 +39,7 @@ fn String FateDie.to_string(FateDie* d, Allocator allocator = allocator::heap())
 // Roll generates a random number and the appropriate symbol
 fn DieRoll NormalDie.roll(NormalDie* d) @dynamic  {
 	int val = random::rand_in_range(1, (int) *d) ;
-	String sym = string::format("%d", val, allocator: allocator::heap());
+ 	String sym = string::format("%d", val, allocator: allocator::heap());
 	return DieRoll{
 		.result = val,
 		.symbol = sym,
