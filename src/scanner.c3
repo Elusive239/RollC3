@@ -64,8 +64,9 @@ macro TokenScanner* newScanner(InStream r)  {
 }
 
 // Scan returns the next token and literal value
-fn TokenLiteral TokenScanner.scan(TokenScanner* s, Allocator alloc = allocator::temp()) {
+fn TokenLiteral TokenScanner.scan(TokenScanner* s, Allocator alloc =tmem) {
 	Rune ch = s.read();
+	
     DString buf;
     defer buf.free();
     buf.append_char(ch);
@@ -187,7 +188,6 @@ fn TokenLiteral TokenScanner.scanDieOrDrop(TokenScanner* s, Allocator alloc)  {
 	Token tok = DIE;
 	while (true){
 		Rune ch = s.read();
-
 		if (ch == eof) {
 			break;
 		} else if (tok == DIE && ch == 'l') {

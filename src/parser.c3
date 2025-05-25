@@ -24,46 +24,56 @@ struct Parser{
 	DynamicArenaAllocator alloc;
 }
 
-macro Parser* newParser(InStream r, Allocator alloc = allocator::temp()) {
+macro Parser* newParser(InStream r, Allocator alloc = mem) {
 	Parser* parser = && (Parser){.s = newScanner(r), .alloc = {}};
 	parser.alloc.init(alloc, PARSER_DEFAULT_ALLOC);
 	return parser;
 }
 // Parse parses a Roll statement.
-macro Roll? Parser.parse(&p) {
+fn Roll? Parser.parse(&p) {
 	p.alloc.reset();
 	// First token should be a NUM or a DIE
 	TokenLiteral tlit = p.scanIgnoreWhitespace();
-	// tok, lit := 
 
-	Roll roll;
-	// if e, ok := err.(ErrEndOfRoll); ok && e == "" {
-	// 	err = nil
-	// }
-	if(catch err =  p.parseRoll(&roll, tlit, false)){
-		if(err == END_OF_ROLL) return roll; //unreachable("How do we deal with this if we can't return the roll AND an error...?");
+	any roll;
+	if(catch err = p.parseRoll(&roll, tlit, false)){
+		if(err == END_OF_ROLL){
+			if(roll.type  == DiceRoll.typeid) {return anycast(roll, DiceRoll);}
+			else if(roll.type  == GroupedRoll.typeid) {return anycast(roll, GroupedRoll);}
+			unreachable("Parse should never return anything that isn't DiceRoll or GroupedRoll...");
+		}
 		return err?;
 	}
-	return roll;
+	if(roll.type  == DiceRoll.typeid) {return anycast(roll, DiceRoll);}
+	else if(roll.type  == GroupedRoll.typeid) {return anycast(roll, GroupedRoll);}
+	unreachable("Parse should never return anything that isn't DiceRoll or GroupedRoll...");
 }
 
 // parseRoll gets a roll of any type
-fn void? Parser.parseRoll(&p, Roll* roll, TokenLiteral tlit, bool grouped) { //(Roll, error) 
+fn void? Parser.parseRoll(&p, any* roll, TokenLiteral tlit, bool grouped) { //(Roll, error) 
 	switch (tlit.first) {
 		case NUM:
 		case DIE:
 			DiceRoll* rd = p.pclone((DiceRoll){});
-			p.parseDiceRoll(rd, grouped)!;
-			*roll = rd;
+			fault err = @catch(p.parseDiceRoll(rd, grouped));
+			(*roll) = any_make(rd, DiceRoll.typeid);
+			if(err){
+				io::printfn("Err: %s", err);
+				return err?; 
+			}
 		case GROUPSTART:
 			GroupedRoll* rd = p.pclone((GroupedRoll){});
-			p.parseGroupedRoll(rd, grouped)!;
-			*roll = rd;
+			fault err = @catch(p.parseGroupedRoll(rd, grouped));
+			(*roll) = any_make(rd, GroupedRoll.typeid);
+			if(err){
+				io::printfn("Err: %s", err);
+				return err?; 
+			}
 		default:
-			// return nil, ErrUnexpectedToken(lit);
+			*roll = null;
 			return UNEXPECTED_TOKEN?;
 	}
-	return UNEXPECTED_TOKEN?;
+	// return UNEXPECTED_TOKEN?;
 }
 
 //parseGroupedRoll V
@@ -75,7 +85,7 @@ fn void? Parser.parseGroupedRoll(&p, GroupedRoll* roll, bool grouped) { // (roll
 //parseDiceRoll    V
 // parseDiceRoll parses a DiceRoll statement
 fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *GroupedRoll, err error) 
-	roll = p.pclone((DiceRoll){});
+	// roll = p.pclone((DiceRoll){});
 	TokenLiteral tlit = p.buf.tlit;
 	
 	// If NUM, we store it as the multiplier, else we use 1
@@ -91,7 +101,6 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 	}
 
 	// We will have a DIE token here, so parse it
-	io::printfn("TokenLiteral: %s, %s", tlit.first, tlit.second);
 	ParsedDie? die = p.parseDie(tlit.second);
 	if (catch err = die) {
 		return err?;
@@ -102,6 +111,21 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		roll.die = p.pclone(((FateDie) 0));
 	}
 
+	// if(roll){ // DEBUG
+	// 	io::printfn("roll.multiplier = %s;", roll.multiplier);
+	// 	if(roll.die       ) io::printfn("roll.die        = %s;", roll.die       );
+	// 	io::printfn("roll.modifier   = %s;", roll.modifier  );
+	// 	if(roll.exploding != null) io::printfn("roll.exploding  = %s;", roll.exploding );
+	// 	if(roll.limit     != null) io::printfn("roll.limit      = %s;", roll.limit     );
+	// 	if(roll.success   != null) io::printfn("roll.success    = %s;", roll.success   );
+	// 	if(roll.failure   != null) io::printfn("roll.failure    = %s;", roll.failure   );
+	// 	if(roll.rerolls   .len != 0) io::printfn("roll.rerolls    = %s;", roll.rerolls   );
+	// 	io::printfn("roll.sort       = %s;", roll.sort      );
+	// }
+
+	// io::printfn("roll = %s;", roll.to_string(&p.alloc));
+	// io::printfn("roll.die = %s;", roll.die.to_string(&p.alloc));
+	if(catch (END_OF_ROLL?)) return; // PROBLEM IS ABOVE
 	int mod;
 	Token lastTok;
 
@@ -119,7 +143,7 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 				mod = moderr;
 				roll.modifier += mod;
 			}
-			if (catch err = moderr){
+			else if (catch err = moderr){
 				if (tlit.first == MINUS) {
 					mod = -1;
 				}
@@ -128,22 +152,18 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 				tlit = p.scanIgnoreWhitespace();
 				switch (tlit.first) {
 				case EOF:
-					return END_OF_ROLL?;
+					return;
 				case GROUPSTART:
 					if (grouped) {
 						// Technically this is an end of roll, but we want to
 						// capture the multiplier to determine the sign of the
 						// next term
-						// err = ErrAmbiguousModifier(mod)
 						return AMBIGUOUS_MODIFIER?;
 					}
 					return UNEXPECTED_TOKEN?;
-					// return nil, ErrUnexpectedToken(lit)
 				case GROUPEND:
 				case GROUPSEP:
 					if (grouped) {
-						// err = ErrEndOfRoll(lit)
-						// return
 						return END_OF_ROLL?;
 					}
 					return UNEXPECTED_TOKEN?;
@@ -159,7 +179,6 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		case KEEPLOW:
 		case DROPHIGH:
 		case DROPLOW:
-		io::printfn("Limit!");
 			roll.limit = p.parseLimit(tlit)!;
 		case SORT:
 			switch (tlit.second) {
@@ -192,7 +211,8 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 			// 	roll.failure = failure;
 			// }
 			roll.failure = p.parseComparison()!;
-		case EOF: return END_OF_ROLL?;
+		case EOF: 
+			return;
 		case GROUPEND:
 		case GROUPSEP: 
 			if (grouped) {
@@ -210,7 +230,9 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 				return AMBIGUOUS_MODIFIER?;
 			}
 			return UNEXPECTED_TOKEN?;
-		default: return UNEXPECTED_TOKEN?;
+		default: 
+			// io::printfn("Final Token: %s %d", tlit.second, tlit.first);
+		return UNEXPECTED_TOKEN?;
 			// return nil, ErrUnexpectedToken(lit)
 		}
 
@@ -269,13 +291,11 @@ fn ParsedDie? Parser.parseDie(&p, String dieCode) { //(Die, error)
 
 	int? value = trimmedDieCode.to_int();
 	if (try value ){
-		io::printfn("Normaldie from: %s", dieCode);
 		return { NormalDie.typeid, value};
 	}
 
 	// Is it a Fate/Fudge die roll?
 	if( trimmedDieCode == "F") {
-		io::printfn("Fatedie from: %s", dieCode);
 		return {FateDie.typeid, 0};
 	}
 	io::printfn("Invalid Die Code: \"%s\" from \"%s\"", trimmedDieCode, dieCode);
@@ -408,6 +428,6 @@ fn TokenLiteral Parser.scanIgnoreWhitespace(&p) {
 	return tlit;
 }
 
-macro Parser.pclone(&p, expr) {
-	return allocator::new(&p.alloc, $typeof(expr), expr);
+macro Parser.pclone(&p, val) {
+	return allocator::new(&p.alloc, $typeof(val), val);
 }

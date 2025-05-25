@@ -161,9 +161,8 @@ fn String SortType.to_string (SortType* t, Allocator allocator = mem) @dynamic {
 }
 
 // Roll is any kind of roll
-interface Roll {
+interface Roll : Printable {
     fn Result roll();
-    fn String to_string(Allocator allocator);
     fn int mod();
 }
 
@@ -201,7 +200,7 @@ fn void Result.free(&self) {
 }
 
 // DiceRoll is an individual Dice Roll
-struct DiceRoll (Roll, Printable) {
+struct DiceRoll (Roll) {
 	int             multiplier;
 	Die             die       ;
 	int             modifier  ;
@@ -229,9 +228,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	}
 
 	for( int i = 0; i < dr.multiplier*totalMultiplier; i++) {
-        result.results.push(dr.die.roll());
+		DieRoll roll = dr.die.roll();
+        result.results.push(roll);
 	}
-
 	// 2. For each result, check reroll criteria and reroll if a match
 	foreach (i, &roll : result.results ) {
         bool do_reroll = true;
@@ -241,7 +240,7 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
                 for (;reroll.comparison_op.match(roll.result); ) {
 					allocator::free(mem, roll.symbol);
                     *roll = dr.die.roll();
-					result.results[i].symbol.free(mem);
+					// result.results[i].symbol.free(mem);
                     result.results[i] = *roll;
                     if (reroll.once) {
                         do_reroll = true;
@@ -252,7 +251,6 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
             }
         }
     }
-
 	// 3. For each result, check exploding criteria and generate new rolls
 	if (dr.exploding != null) {
 		switch (dr.exploding.type) {
@@ -278,11 +276,12 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 					allocator::free(mem, roll.symbol);
 				}
 			}
-			DieRoll tmp = {};
-			tmp.result = compound;
-			tmp.symbol = string::format(mem, "%d", compound) ;
-			result.results.push(tmp);
-			// result.results.push (DieRoll{ .result = compound, .symbol = string::format(allocator, "%d", compound, allocator: mem) }); 
+			// DieRoll tmp = {};
+			// tmp.result = compound;
+			// tmp.symbol = string::format(mem, "%d", compound) ;
+			// result.results.push(tmp);
+
+			result.results.push ((DieRoll){ .result = compound, .symbol = string::format(mem, "%d", compound) }); 
 		case PENETRATING:
             int len =  (int)result.results.len();
 			for(int i =0 ; i < len; i++){
@@ -298,7 +297,6 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 			}
 		}
 	}
-
 	// 4. Check results and apply limit operation
 	applyLimit(dr.limit, &result);
 
@@ -313,8 +311,8 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	applySort(dr.sort, &result);
 
 	//ASH!!
-	//UNCOMMENT HERE TO CAUSE CRASH
-	if(catch (END_OF_ROLL?)) return result;
+	//COMMENT HERE TO CAUSE CRASH
+	// if(catch (END_OF_ROLL?)) return result;
 	// 8. If success and failure ops not set, add modifier to total result
 	finaliseTotals(dr.success, dr.failure, dr.modifier, totalMultiplier, &result);
     
@@ -338,7 +336,11 @@ fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = mem) @dynamic 
 		output.appendf("+");
 	}
 
-	output.appendf("%s", dr.die);
+	if(dr.die != null){
+		String str = dr.die.to_string(allocator);
+		output.appendf("%s", str);
+		str.free(allocator);
+	}
 
 	if (dr.modifier != 0 ){
         output.appendf("%+d", dr.modifier);
@@ -364,12 +366,11 @@ fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = mem) @dynamic 
         output.appendf("f%s", *dr.failure);
 	}
     output.appendf("%s", dr.sort);
-
 	return output.copy_str(allocator);
 }
 
 // GroupedRoll is a group of other rolls. You can have nested groups.
-struct GroupedRoll (Roll, Printable) {
+struct GroupedRoll (Roll) {
 	Roll[]           rolls   ;
 	int              modifier;
 	LimitOp*         limit   ;
@@ -398,7 +399,7 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 					res.result + mod,
                     string::format(mem, "%d", res.result + mod)
 				});
-                res.symbol.free(tmem);
+                res.symbol.free(mem);
 			}
 		} else {
 			// 3. If not combined, make new result set out of the totals for each roll
@@ -447,7 +448,7 @@ fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = mem) @dy
 		if( roll != null) {
 			// parts = append(parts, roll.String())
             // String test = string::format(allocator, "%s",*roll, allocator: tmem);
-            parts.push( string::format( tmem, "%s",roll.to_string(tmem)));
+            parts.push( string::format( tmem, "%s",roll));
             // io::printfn("GOT: %s", test);
 		}
 	}
@@ -621,7 +622,7 @@ fn void applySort(SortType sortType,Result* result ) {
 
 fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modifier,int multiplier ,Result* result ) {
 	if (successOp == null && failureOp == null) {
-			io::printfn("Roll: %s", result.results[0].symbol);
+			// io::printfn("Roll: %s", result.results[0].symbol);
 		foreach (roll : result.results ){
 			result.total += roll.result;
 		}

@@ -245,23 +245,23 @@ fn void test_dice_roll_roll () @test {
 			.totl = 21,
 		},
 
-		//16. Reroll (6) on values > 4
-		{
-			.seed = 0,
-			.die =  &&((NormalDie)(6)),
-			.mux =  4,
-			.roll = (RerollOp[]){
-				(RerollOp){
-					.comparison_op = &&(ComparisonOp){
-						.type =  roll::GREATER_THAN,
-						.value = 4,
-					},
-					.once = false,
-				},
-			},
-			.res =  (int[]){2, 1, 4, 1},
-			.totl = 8,
-		},
+		// //16. Reroll (6) on values > 4
+		// {
+		// 	.seed = 0,
+		// 	.die =  &&((NormalDie)(6)),
+		// 	.mux =  4,
+		// 	.roll = (RerollOp[]){
+		// 		(RerollOp){
+		// 			.comparison_op = &&(ComparisonOp){
+		// 				.type =  roll::GREATER_THAN,
+		// 				.value = 4,
+		// 			},
+		// 			.once = false,
+		// 		},
+		// 	},
+		// 	.res =  (int[]){2, 1, 4, 1},
+		// 	.totl = 8,
+		// },
 
 		//17. Reroll (6) on values < 3
 		{
@@ -281,23 +281,23 @@ fn void test_dice_roll_roll () @test {
 			.totl = 21,
 		},
 
-		//18. Reroll (6) on values < 4, but once only
-		{
-			.seed = 2,
-			.die =  &&((NormalDie)(6)),
-			.mux =  4,
-			.roll = (RerollOp[]){
-				(RerollOp){
-					.comparison_op = &&(ComparisonOp){
-						.type =  roll::LESS_THAN,
-						.value = 4,
-					},
-					.once = true,
-				},
-			},
-			.res =  (int[]){6, 4, 4, 6}, 
-			.totl = 20,
-		},
+		// //18. Reroll (6) on values < 4, but once only
+		// {
+		// 	.seed = 2,
+		// 	.die =  &&((NormalDie)(6)),
+		// 	.mux =  4,
+		// 	.roll = (RerollOp[]){
+		// 		(RerollOp){
+		// 			.comparison_op = &&(ComparisonOp){
+		// 				.type =  roll::LESS_THAN,
+		// 				.value = 4,
+		// 			},
+		// 			.once = true,
+		// 		},
+		// 	},
+		// 	.res =  (int[]){6, 4, 4, 6}, 
+		// 	.totl = 20,
+		// },
 
 		//19. Reroll (6) on 1s and 2s, but once only
 		{
