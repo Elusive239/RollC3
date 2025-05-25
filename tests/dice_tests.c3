@@ -10,7 +10,7 @@ struct DieRollTestStruct{
 
 // Ensure the die can roll results correctly.
 fn void die_roll_tests() @test {
-	DieRollTestStruct[*] tests = DieRollTestStruct[]{
+	DieRollTestStruct[*] tests =( DieRollTestStruct[]){
 		// Fate rolls
 		{.seed = 2, .die = &&(FateDie)(0), .res = 0, .sym = roll:: FATE_BLANK},
 		{.seed = 1, .die = &&(FateDie)(0), .res = 1, .sym = roll:: FATE_PLUS},
@@ -33,7 +33,7 @@ fn void die_roll_tests() @test {
 	foreach (i, tt : tests) {
 		random::srand(tt.seed);
 		DieRoll result = tt.die.roll();
-        defer result.symbol.free();
+        defer result.symbol.free(mem);
         assert(tt.res == result.result, "%d. result mismatch: exp=%d got=%d", i, tt.res, result.result);
         assert(tt.sym == result.symbol, "%d. symbol mismatch: exp=%s got=%s", i, tt.sym, result.symbol);
 	}

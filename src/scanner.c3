@@ -56,14 +56,15 @@ fn bool isValidDieRoll(Rune ch) {
 // Scanner
 
 // NewScanner returns a new instance of scanner
-fn TokenScanner* newScanner(InStream r)  {
-    TokenScanner* scanner = mem::new(TokenScanner);
+macro TokenScanner* newScanner(InStream r)  {
+    TokenScanner* scanner = &&((TokenScanner){});
+	// mem::new(TokenScanner);
     scanner.r = r;
 	return scanner;
 }
 
 // Scan returns the next token and literal value
-fn TokenLiteral TokenScanner.scan(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scan(TokenScanner* s, Allocator alloc = allocator::temp()) {
 	Rune ch = s.read();
     DString buf;
     defer buf.free();
@@ -72,61 +73,61 @@ fn TokenLiteral TokenScanner.scan(TokenScanner* s) {
 	switch {
 	case isWhitespace(ch):
 		s.unread();
-		return s.scanWhitespace();
+		return s.scanWhitespace(alloc);
 	case isNumber(ch):
 		s.unread();
-		return s.scanNumber();
+		return s.scanNumber(alloc);
 	case ch == 'd':
 		s.unread();
-		return s.scanDieOrDrop();
+		return s.scanDieOrDrop(alloc);
 	case ch == 'f':
 		// return FAILURES, string(ch);
-        return {.first = FAILURES, .second = buf.copy_str()};
+        return {.first = FAILURES, .second = buf.copy_str(allocator: alloc)};
 	case ch == '!':
 		s.unread();
-		return s.scanExplosions();
+		return s.scanExplosions(alloc);
 	case ch == 'k':
 		s.unread();
-		return s.scanKeep();
+		return s.scanKeep(alloc);
 	case ch == 'r':
 		s.unread();
-		return s.scanReroll();
+		return s.scanReroll(alloc);
 	case ch == 's':
 		s.unread();
-		return s.scanSort();
+		return s.scanSort(alloc);
 	case ch == '-':
 		// return MINUS, string(ch)
-        return {.first = MINUS, .second = buf.copy_str()};
+        return {.first = MINUS, .second = buf.copy_str(allocator: alloc)};
 	case ch == '+':
 		// return PLUS, string(ch)
-        return {.first = PLUS, .second = buf.copy_str()};
+        return {.first = PLUS, .second = buf.copy_str(allocator: alloc)};
 	case ch == '>':
 		// return GREATER, string(ch)
-        return {.first = GREATER, .second = buf.copy_str()};
+        return {.first = GREATER, .second = buf.copy_str(allocator: alloc)};
 	case ch == '<':
 		// return LESS, string(ch)
-        return {.first = LESS, .second = buf.copy_str()};
+        return {.first = LESS, .second = buf.copy_str(allocator: alloc)};
 	case ch == '=':
 		// return EQUAL, string(ch)
-        return {.first = EQUAL, .second = buf.copy_str()};
+        return {.first = EQUAL, .second = buf.copy_str(allocator: alloc)};
 	case ch == '{':
 		// return GROUPSTART, string(ch)
-        return {.first = GROUPSTART, .second = buf.copy_str()};
+        return {.first = GROUPSTART, .second = buf.copy_str(allocator: alloc)};
 	case ch == '}':
 		// return GROUPEND, string(ch)
-        return {.first = GROUPEND, .second = buf.copy_str()};
+        return {.first = GROUPEND, .second = buf.copy_str(allocator: alloc)};
 	case ch == ',':
 		// return GROUPSEP, string(ch)
-        return {.first = GROUPSEP, .second = buf.copy_str()};
+        return {.first = GROUPSEP, .second = buf.copy_str(allocator: alloc)};
 	case (ch == eof):
         return {.first = EOF, .second = ""};
 	}
 
-    return {.first = ILLEGAL, .second = buf.copy_str()};
+    return {.first = ILLEGAL, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanWhitespace consumes the current Rune and all contiguous whitespace.
-fn TokenLiteral TokenScanner.scanWhitespace(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scanWhitespace(TokenScanner* s, Allocator alloc) {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -146,11 +147,11 @@ fn TokenLiteral TokenScanner.scanWhitespace(TokenScanner* s) {
 		}
 	}
 
-    return {.first = WS, .second = buf.copy_str()};
+    return {.first = WS, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanNumber consumes the current Rune and all contiguous number Runes.
-fn TokenLiteral TokenScanner.scanNumber(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scanNumber(TokenScanner* s, Allocator alloc) {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -171,11 +172,11 @@ fn TokenLiteral TokenScanner.scanNumber(TokenScanner* s) {
 	}
 
 	// Otherwise return as a regular identifier.
-    return {.first = NUM, .second = buf.copy_str()};
+    return {.first = NUM, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanDieOrDrop consumes the current Rune and all contiguous die/drop Runes.
-fn TokenLiteral TokenScanner.scanDieOrDrop(TokenScanner* s)  {
+fn TokenLiteral TokenScanner.scanDieOrDrop(TokenScanner* s, Allocator alloc)  {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -213,11 +214,11 @@ fn TokenLiteral TokenScanner.scanDieOrDrop(TokenScanner* s)  {
 	}
 
 	// Otherwise return as a regular identifier.
-	return {.first = tok, .second = buf.copy_str()};
+	return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanKeep consumes the current Rune and all contiguous keep Runes.
-fn TokenLiteral TokenScanner.scanKeep(TokenScanner* s)  {
+fn TokenLiteral TokenScanner.scanKeep(TokenScanner* s, Allocator alloc)  {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -243,11 +244,11 @@ fn TokenLiteral TokenScanner.scanKeep(TokenScanner* s)  {
 	}
 
 	// Otherwise return as a regular identifier.
-	return {.first = tok, .second = buf.copy_str()};
+	return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanExplosions consumes the current Rune and all contiguous explode Runes.
-fn TokenLiteral TokenScanner.scanExplosions(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scanExplosions(TokenScanner* s, Allocator alloc) {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -259,7 +260,7 @@ fn TokenLiteral TokenScanner.scanExplosions(TokenScanner* s) {
 
 	Rune ch = s.read();
 	if ((ch == eof)) {
-		return {.first = tok, .second = buf.copy_str()};
+		return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 	}
 
 	if( ch == '!') {
@@ -274,11 +275,11 @@ fn TokenLiteral TokenScanner.scanExplosions(TokenScanner* s) {
 	}
 
 	// Otherwise return as a regular identifier.
-	return {.first = tok, .second = buf.copy_str()};
+	return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanReroll consumes the current Rune and all contiguous reroll Runes.
-fn TokenLiteral TokenScanner.scanReroll(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scanReroll(TokenScanner* s, Allocator alloc) {
 	// Create a buffer and read the current character into it.
 	DString buf;
     defer buf.free();
@@ -290,7 +291,7 @@ fn TokenLiteral TokenScanner.scanReroll(TokenScanner* s) {
 
 	Rune ch = s.read();
 	if ((ch == eof)) {
-		return {.first = tok, .second = buf.copy_str()};
+		return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 	}
 
 	if (ch == 'o') {
@@ -300,11 +301,11 @@ fn TokenLiteral TokenScanner.scanReroll(TokenScanner* s) {
 	}
 
 	// Otherwise return as a regular identifier.
-	return {.first = tok, .second = buf.copy_str()};
+	return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 }
 
 // scanSort consumes the current Rune and all contiguous sort Runes.
-fn TokenLiteral TokenScanner.scanSort(TokenScanner* s) {
+fn TokenLiteral TokenScanner.scanSort(TokenScanner* s, Allocator alloc) {
 	// Create a buffer and read the current character into it.
 	// var buf bytes.Buffer
 	// buf.WriteRune(s.read())
@@ -318,7 +319,7 @@ fn TokenLiteral TokenScanner.scanSort(TokenScanner* s) {
 
 	Rune ch = s.read();
 	if ((ch == eof)) {
-		return {.first = tok, .second = buf.copy_str()};
+		return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 	}
 
 	if (ch == 'd' ){
@@ -328,14 +329,14 @@ fn TokenLiteral TokenScanner.scanSort(TokenScanner* s) {
 	}
 
 	// Otherwise return as a regular identifier.
-	return {.first = tok, .second = buf.copy_str()};
+	return {.first = tok, .second = buf.copy_str(allocator: alloc)};
 }
 
 // read reads the next Rune from the buffered reader.
 // Returns the Rune(0) if an error occurs (or io.EOF is returned).
 fn Rune TokenScanner.read(TokenScanner* s)  {
 	// ch, _, err := s.r.ReadRune();
-    Rune! ch = s.r.read_byte();
+    Rune? ch = s.r.read_byte();
 	if(catch ch) {
 		return eof;
 	}

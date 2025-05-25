@@ -4,7 +4,7 @@ import std::collections;
 import std::collections::map;
 
 // ComparisonType is the type of comparison
-distinct ComparisonType = int;
+typedef ComparisonType = int;
 
 // Equals matches only values that are equal to the comparison value
 const ComparisonType EQUALS = 0;
@@ -35,20 +35,20 @@ fn bool ComparisonOp.match(ComparisonOp* op, int val) {
 }
 
 // String returns the string representation of the comparison operator
-fn String ComparisonOp.to_string(ComparisonOp* op, Allocator allocator = allocator::heap()) @dynamic {
+fn String ComparisonOp.to_string(ComparisonOp* op, Allocator allocator = mem) @dynamic {
 	switch (op.type) {
         case GREATER_THAN:
-            return string::format(">%d", op.value, allocator: allocator);
+            return string::format(allocator, ">%d", op.value);
         case LESS_THAN:
-            return string::format("<%d", op.value, allocator: allocator);
+            return string::format(allocator, "<%d", op.value);
         case EQUALS:
-            return string::format("=%d", op.value, allocator: allocator);
+            return string::format(allocator, "=%d", op.value);
         default: unreachable("How did we get here?");
 	}
 }
 
 // ExplodingType is the type of exploding die
-distinct ExplodingType = int;
+typedef ExplodingType = int;
 // Exploding adds new dice for each roll satisfying the exploding condition
 const ExplodingType EXPLODING = 0;
 // Compounded adds to a single new result for each roll
@@ -64,7 +64,7 @@ struct ExplodingOp (Printable) {
 }
 
 // String returns the string representation of the exploding dice operation
-fn String ExplodingOp.to_string(ExplodingOp* e, Allocator allocator = allocator::heap()) @dynamic => @pool() {
+fn String ExplodingOp.to_string(ExplodingOp* e, Allocator allocator = mem) @dynamic => @pool() {
     String output;
 	switch (e.type) {
         case EXPLODING:
@@ -74,12 +74,12 @@ fn String ExplodingOp.to_string(ExplodingOp* e, Allocator allocator = allocator:
         case PENETRATING:
 		    output = "!p";
 	}
-    String tmp =  e.comparison_op.to_string(allocator: allocator::temp());
-    return string::format("%s%s", output, tmp.trim_left( "="), allocator: allocator);
+    String tmp =  e.comparison_op.to_string(allocator: tmem);
+    return string::format(allocator, "%s%s", output, tmp.trim_left( "="));
 }
 
 // LimitType is the type of roll limitation
-distinct LimitType = int;
+typedef LimitType = int;
 
 // KeepHighest indicated we should keep the highest results
 const LimitType KEEP_HIGHEST = 0;
@@ -96,7 +96,7 @@ struct LimitOp (Printable) {
 	LimitType type;
 }
 
-fn String LimitOp.to_string (LimitOp* op, Allocator allocator = allocator::heap()) @dynamic {
+fn String LimitOp.to_string (LimitOp* op, Allocator allocator = mem) @dynamic {
 	String output;
     switch (op.type) {
         case KEEP_HIGHEST:
@@ -110,9 +110,9 @@ fn String LimitOp.to_string (LimitOp* op, Allocator allocator = allocator::heap(
 	}
 
 	if (op.amount > 1) {
-        output = string::format("%s%d", output, op.amount, allocator: allocator);
+        output = string::format(allocator, "%s%d", output, op.amount);
 	}else {
-        output = string::format("%s", output, allocator: allocator);
+        output = string::format(allocator, "%s", output);
     }
 
 	return output;
@@ -125,17 +125,17 @@ struct RerollOp (Printable) {
 }
 
 // String returns the string representation of the reroll operation
-fn String RerollOp.to_string (RerollOp* e, Allocator allocator = allocator::heap()) @dynamic => @pool() {
+fn String RerollOp.to_string (RerollOp* e, Allocator allocator = mem) @dynamic => @pool() {
     String output = "r";
 	if (e.once) {
 		output = "ro";
 	}
-    String tmp = e.comparison_op.to_string(allocator: allocator::temp());
-    return string::format("%s%s", output, tmp.trim_left("="), allocator: allocator);
+    String tmp = e.comparison_op.to_string(allocator: tmem);
+    return string::format(allocator, "%s%s", output, tmp.trim_left("="));
 }
 
 // SortType is the type of sorting to use for dice roll results
-distinct SortType (Printable) = int;
+typedef SortType (Printable) = int;
 
 // Unsorted doesn't sort dice rolls
 const SortType UNSORTED   = 0;
@@ -145,7 +145,7 @@ const SortType ASCENDING  = 1;
 const SortType DESCENDING = 2;
 
 // String return the string representation of a SortType value
-fn String SortType.to_string (SortType* t, Allocator allocator = allocator::heap()) @dynamic {
+fn String SortType.to_string (SortType* t, Allocator allocator = mem) @dynamic {
     String output;
 	switch (*t) {
 	case ASCENDING:
@@ -157,7 +157,7 @@ fn String SortType.to_string (SortType* t, Allocator allocator = allocator::heap
         output = "";
 	}
 
-	return string::format(output, allocator:allocator);
+	return string::format(allocator, output);
 }
 
 // Roll is any kind of roll
@@ -169,7 +169,7 @@ interface Roll {
 
 // Result is a collection of die rolls and a count of successes
 struct Result{
-    List(<DieRoll>) results;
+    List{DieRoll} results;
 	// DieRoll[] results;
 	int total    ;
 	int successes;
@@ -195,7 +195,7 @@ fn void Result.swap(Result* r, int i, int j) {
 fn void Result.free(&self) {
     foreach(&r : self.results){
         // io::printfn("SYMBOL: [%s]", r.symbol);
-        r.symbol.free();
+        r.symbol.free(mem);
     }
     self.results.free();
 }
@@ -239,8 +239,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
             do_reroll= false;
             foreach  (reroll : dr.rerolls ) {
                 for (;reroll.comparison_op.match(roll.result); ) {
-					mem::free(roll.symbol);
+					allocator::free(mem, roll.symbol);
                     *roll = dr.die.roll();
+					result.results[i].symbol.free(mem);
                     result.results[i] = *roll;
                     if (reroll.once) {
                         do_reroll = true;
@@ -274,20 +275,24 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 				while (dr.exploding.comparison_op.match(roll.result)) {
 					roll = dr.die.roll();
 					compound += roll.result;
-					mem::free(roll.symbol);
+					allocator::free(mem, roll.symbol);
 				}
 			}
-			result.results.push (DieRoll{.result = compound, .symbol = string::format("%d", compound, allocator: allocator::heap()) }); 
+			DieRoll tmp = {};
+			tmp.result = compound;
+			tmp.symbol = string::format(mem, "%d", compound) ;
+			result.results.push(tmp);
+			// result.results.push (DieRoll{ .result = compound, .symbol = string::format(allocator, "%d", compound, allocator: mem) }); 
 		case PENETRATING:
             int len =  (int)result.results.len();
 			for(int i =0 ; i < len; i++){
                 DieRoll roll = result.results[i];
 				for (;dr.exploding.comparison_op.match(roll.result);) {
 					roll = dr.die.roll();
-					mem::free(roll.symbol);
+					allocator::free(mem, roll.symbol);
 					DieRoll newroll;
 					newroll.result = roll.result-1;
-					newroll.symbol = string::format("%d", newroll.result, allocator: allocator::heap());
+					newroll.symbol = string::format(mem, "%d", newroll.result);
 					result.results.push(newroll);
 				}
 			}
@@ -303,9 +308,13 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	// 6. If failure op set, add modifier to each result and subtract successes for each match
 	applyFailure(dr.failure, dr.modifier, &result);
 
+	
 	// 7. If sort op set, sort results
 	applySort(dr.sort, &result);
 
+	//ASH!!
+	//UNCOMMENT HERE TO CAUSE CRASH
+	if(catch (END_OF_ROLL?)) return result;
 	// 8. If success and failure ops not set, add modifier to total result
 	finaliseTotals(dr.success, dr.failure, dr.modifier, totalMultiplier, &result);
     
@@ -317,8 +326,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 }
 
 // String represents the dice roll as a string
-fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = allocator::heap()) @dynamic {
+fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = mem) @dynamic {
     DString output;
+	output.init(allocator);
     defer output.free();
 	if (dr.multiplier > 1 || dr.multiplier < -1) {
 		output.appendf("%+d", dr.multiplier);
@@ -355,7 +365,7 @@ fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = allocator::hea
 	}
     output.appendf("%s", dr.sort);
 
-	return output.copy_str(allocator: allocator);
+	return output.copy_str(allocator);
 }
 
 // GroupedRoll is a group of other rolls. You can have nested groups.
@@ -384,18 +394,18 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
             Result roll_result = roll.roll();
             defer roll_result.free();
             foreach( &res : roll_result.results) {
-                result.results.push(DieRoll{
+                result.results.push((DieRoll){
 					res.result + mod,
-                    string::new_format("%d", res.result + mod)
+                    string::format(mem, "%d", res.result + mod)
 				});
-                res.symbol.free();
+                res.symbol.free(tmem);
 			}
 		} else {
 			// 3. If not combined, make new result set out of the totals for each roll
             Result t = roll.roll();
             defer t.free();
             
-            DieRoll r = DieRoll{t.total, string::new_format("%d",t.total)};
+            DieRoll r = (DieRoll){t.total, string::format(mem, "%d",t.total)};
 			result.results.push(r);
 		}
 	}
@@ -409,6 +419,7 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 	// 6. If Failure set, apply failure op to results
 	applyFailure(gr.failure, gr.modifier, &result);
 
+	// if(catch (END_OF_ROLL?)) return result;
 	// 7. Add modifier or tally successes
 	finaliseTotals(gr.success, gr.failure, gr.modifier, 1, &result);
 
@@ -427,23 +438,23 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 }
 
 // String represents the grouped roll as a string
-fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = allocator::heap()) @dynamic {
-    List(<String>) parts;
-    parts.temp_init();
+fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = mem) @dynamic {
+    List{String} parts;
+    parts.tinit();
 	// parts := []string{}
     
 	foreach (roll : gr.rolls) {
 		if( roll != null) {
 			// parts = append(parts, roll.String())
-            // String test = string::format("%s",*roll, allocator: allocator::temp());
-            parts.push( string::format( "%s",roll, allocator: allocator::temp()));
+            // String test = string::format(allocator, "%s",*roll, allocator: tmem);
+            parts.push( string::format( tmem, "%s",roll.to_string(tmem)));
             // io::printfn("GOT: %s", test);
 		}
 	}
     defer {
         parts.free();
         foreach(&s : parts){
-            s.free();
+            s.free(tmem);
         }
     }
     
@@ -454,8 +465,8 @@ fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = allocato
  
     // output.append(test);
     DString  output;
-    output.temp_init();
-    String joined = string::join_new(parts.array_view(), sep, allocator: allocator::temp());
+    output.tinit();
+    String joined = string::join(tmem, parts.array_view(), sep);
     output.append(joined);
     defer {
         output.free();
@@ -503,13 +514,13 @@ fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = allocato
         output.insert_char_at(0,'-');
 	}
 
-	return  output.copy_str(allocator: allocator);
+	return  output.copy_str(allocator);
 }
 
 fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 	if (limitOp == null ) return; 
     Result rolls;
-    rolls.results.new_init_with_array(result.results.array_view(), allocator: allocator::temp());
+    rolls.results.init_with_array(tmem, result.results.array_view());
 
 	// Sort our tmp result copy
 	sort(&rolls);
@@ -523,30 +534,31 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 	switch (limitOp.type) {
         case KEEP_HIGHEST:
             while(limit > 0) {
-                rolls.results.last()!!.symbol.free();
+                rolls.results.last()!!.symbol.free(tmem);
                 @catch(rolls.results.remove_last());
                 limit--;
             }
         case KEEP_LOWEST:
             // rolls.Results = rolls.Results[:limit];
             while(limit-- > rolls.results.len()) {
-                rolls.results.first()!!.symbol.free();
+                rolls.results.first()!!.symbol.free(tmem);
                 
                 @catch(rolls.results.remove_first());
             }
         case DROP_HIGHEST:
             while(limit > 0) {
-                rolls.results.last()!!.symbol.free();
+                rolls.results.last()!!.symbol.free(tmem);
                 @catch(rolls.results.remove_last());
                 limit--;
             }
         case DROP_LOWEST:
             // rolls.results = rolls.results[limit:];
-            rolls.results.last()!!.symbol.free();
+            rolls.results.last()!!.symbol.free(tmem);
             while(rolls.results.len() > limit) @catch(rolls.results.remove_last());
 	}
 
-    Map(<int, int>) m = map::temp(<int, int>)(capacity: (uint) rolls.results.len());
+    HashMap{int, int} m;
+	m.tinit(capacity: (uint) rolls.results.len());
 	foreach (r : rolls.results) {
         if(m.has_key(r.result)){
             m.set(r.result, m[r.result]!! + 1);
@@ -555,10 +567,10 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
         }
 	}
 
-    List(<DieRoll>) newResults;
-    newResults.new_init(initial_capacity: rolls.results.len());
+    List{DieRoll} newResults;
+    newResults.init(tmem, initial_capacity: rolls.results.len());
 	foreach (a : result.results) {
-        int! b = m[a.result];
+        int? b = m[a.result];
         if(try b){
 			newResults.push(a);
             b--;
@@ -571,7 +583,8 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 		}
 	}
     result.results.free();
-	result.results.init_wrapping_array(newResults.to_new_array());
+	result.results = {};
+	result.results.init_wrapping_array(mem, newResults.to_array(mem));
     newResults.free();
 }
 
@@ -608,6 +621,7 @@ fn void applySort(SortType sortType,Result* result ) {
 
 fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modifier,int multiplier ,Result* result ) {
 	if (successOp == null && failureOp == null) {
+			io::printfn("Roll: %s", result.results[0].symbol);
 		foreach (roll : result.results ){
 			result.total += roll.result;
 		}
@@ -620,7 +634,7 @@ fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modi
 
 // insertion stort: https://www.geeksforgeeks.org/insertion-sort-algorithm/
 fn void sort(Result* result, bool reverse = false) {
-    List(<DieRoll>)* rolls = &result.results;
+    List{DieRoll}* rolls = &result.results;
     int len = (int) rolls.len();
     for(int i =1; i < len; i++){
         DieRoll key = (*rolls)[i];

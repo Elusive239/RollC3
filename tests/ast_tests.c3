@@ -1,5 +1,5 @@
 module roll::tests;
-
+import std::io;
 import std::math::random;
 
 struct DiceRollRollTestStruct{
@@ -19,30 +19,31 @@ struct DiceRollRollTestStruct{
 }
 
 // // Ensure the dice roll statement can get results correctly
-fn void test_dice_roll_roll () @test {
-	DiceRollRollTestStruct[] tests = DiceRollRollTestStruct[]{
+fn void test_dice_roll_roll () @test {	
+
+	DiceRollRollTestStruct[] tests = (DiceRollRollTestStruct[]){
 		//0. Fate rolls
-		{.seed = 0, .die = &&((FateDie)(0)), .mux = 4, .mod = 2, .res = int[]{-1, 0, -1, -1}, .totl = -1},
+		{.seed = 0, .die = &&((FateDie)(0)), .mux = 4, .mod = 2, .res = (int[]){-1, 0, -1, -1}, .totl = -1},
 
 		//1. Normal Die (3)
-		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .mod = 8, .res = int[]{3, 2, 1}, .totl = 14},
+		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .mod = 8, .res = (int[]){3, 2, 1}, .totl = 14},
 
 		//2. Normal Die (6)
-		{.seed = 2, .die = &&((NormalDie)(6)), .mux = 2, .mod = -2, .res = int[]{2, 4}, .totl = 4},
+		{.seed = 2, .die = &&((NormalDie)(6)), .mux = 2, .mod = -2, .res = (int[]){2, 4}, .totl = 4},
 
 		//3. Exploding Die (6) on 5s
 		{
 			.seed = 20,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
 			},
-			.res =  int[]{5, 1, 1},
+			.res =  (int[]){5, 1, 1},
 			.totl = 7,
 		},
 
@@ -51,14 +52,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
 			},
-			.res =  int[]{3, 2, 5, 6, 3, 3, 5, 5, 2, 4, 2, 1, 1},
+			.res =  (int[]){3, 2, 5, 6, 3, 3, 5, 5, 2, 4, 2, 1, 1},
 			.totl = 42,
 		},
 
@@ -67,14 +68,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 20,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
 			},
-			.res =  int[]{5, 1, 1, 3},
+			.res =  (int[]){5, 1, 1, 3},
 			.totl = 10,
 		},
 
@@ -83,14 +84,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
 			},
-			.res =  int[]{2, 4, 0},
+			.res =  (int[]){2, 4, 0},
 			.totl = 6,
 		},
 
@@ -99,14 +100,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
 			},
-			.res =  int[]{3, 2 , 37},
+			.res =  (int[]){3, 2 , 37},
 			.totl = 42,
 		},
 
@@ -115,14 +116,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 10,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
 			},
-			.res =  int[]{6, 1, 5},
+			.res =  (int[]){6, 1, 5},
 			.totl = 12,
 		},
 
@@ -131,14 +132,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 60,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
 			},
-			.res =  int[]{5, 4, 1},
+			.res =  (int[]){5, 4, 1},
 			.totl = 10,
 		},
 
@@ -147,14 +148,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
 			},
-			.res =  int[]{3, 2, 4, 5, 2, 2, 4, 4, 1, 3, 1, 0, 0},
+			.res =  (int[]){3, 2, 4, 5, 2, 2, 4, 4, 1, 3, 1, 0, 0},
 			.totl = 31,
 		},
 
@@ -163,14 +164,14 @@ fn void test_dice_roll_roll () @test {
 			.seed = 12,
 			.die =  &&((NormalDie)(6)),
 			.mux =  2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
 			},
-			.res =  int[]{6, 1, 0, 0, 4},
+			.res =  (int[]){6, 1, 0, 0, 4},
 			.totl = 11,
 		},
 
@@ -179,11 +180,11 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 3,
 			},
-			.res =  int[]{4},
+			.res =  (int[]){4},
 			.totl = 4,
 		},
 
@@ -192,11 +193,11 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::KEEP_LOWEST,
 				.amount = 3,
 			},
-			.res =  int[]{2, 4, 1, 1},
+			.res =  (int[]){2, 4, 1, 1},
 			.totl = 8,
 		},
 
@@ -205,11 +206,11 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::DROP_LOWEST,
 				.amount = 3,
 			},
-			.res =  int[]{2, 4, 1},
+			.res =  (int[]){2, 4, 1},
 			.totl = 7,
 		},
 
@@ -218,11 +219,11 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::DROP_HIGHEST,
 				.amount = 3,
 			},
-			.res =  int[]{4},
+			.res =  (int[]){4},
 			.totl = 4,
 		},
 
@@ -231,16 +232,16 @@ fn void test_dice_roll_roll () @test {
 			.seed = 0,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 1,
 					},
 					.once = false,
 				},
 			},
-			.res =  int[]{5, 6, 5, 5},
+			.res =  (int[]){5, 6, 5, 5},
 			.totl = 21,
 		},
 
@@ -249,16 +250,16 @@ fn void test_dice_roll_roll () @test {
 			.seed = 0,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::GREATER_THAN,
 						.value = 4,
 					},
 					.once = false,
 				},
 			},
-			.res =  int[]{2, 1, 4, 1},
+			.res =  (int[]){2, 1, 4, 1},
 			.totl = 8,
 		},
 
@@ -267,16 +268,16 @@ fn void test_dice_roll_roll () @test {
 			.seed = 0,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::LESS_THAN,
 						.value = 3,
 					},
 					.once = false,
 				},
 			},
-			.res =  int[]{5, 6, 5, 5},
+			.res =  (int[]){5, 6, 5, 5},
 			.totl = 21,
 		},
 
@@ -285,16 +286,16 @@ fn void test_dice_roll_roll () @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::LESS_THAN,
 						.value = 4,
 					},
 					.once = true,
 				},
 			},
-			.res =  int[]{6, 4, 4, 6}, 
+			.res =  (int[]){6, 4, 4, 6}, 
 			.totl = 20,
 		},
 
@@ -303,40 +304,40 @@ fn void test_dice_roll_roll () @test {
 			.seed = 0,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 1,
 					},
 					.once = true,
 				},
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 2,
 					},
 					.once = true,
 				},
 			},
-			.res =  int[]{5, 6, 5, 5},
+			.res =  (int[]){5, 6, 5, 5},
 			.totl = 21,
 		},
 
 		//20. Normal Die (3) sorted ascending
-		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{3, 2, 1}, .totl = 6, .sort = roll::ASCENDING},
+		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = (int[]){3, 2, 1}, .totl = 6, .sort = roll::ASCENDING},
 
 		//21. Normal Die (3) sorted descending
-		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = int[]{1, 2, 3}, .totl = 6, .sort = roll::DESCENDING},
+		{.seed = 1, .die = &&((NormalDie)(3)), .mux = 3, .res = (int[]){1, 2, 3}, .totl = 6, .sort = roll::DESCENDING},
 
 		//22. Normal Die (6) successes on 6s
 		{
 			.seed = 5,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 2, 1},
+			.res =  (int[]){6, 2, 1},
 			.totl = 1,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 6,
 			},
@@ -348,9 +349,9 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{3, 2, 5},
+			.res =  (int[]){3, 2, 5},
 			.totl = 2,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
@@ -362,9 +363,9 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{3, 2, 5},
+			.res =  (int[]){3, 2, 5},
 			.totl = 1,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 3,
 			},
@@ -376,13 +377,13 @@ fn void test_dice_roll_roll () @test {
 			.seed = 12,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{6, 1, 1},
+			.res =  (int[]){6, 1, 1},
 			.totl = 1,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 4,
 			},
@@ -394,13 +395,13 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{3,2 , 5},
+			.res =  (int[]){3,2 , 5},
 			.totl = 2,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 5,
 			},
@@ -412,13 +413,13 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{3, 2, 5},
+			.res =  (int[]){3, 2, 5},
 			.totl = -1,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 4,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
@@ -430,13 +431,13 @@ fn void test_dice_roll_roll () @test {
 			.seed = 1,
 			.die =  &&((NormalDie)(6)),
 			.mux =  3,
-			.res =  int[]{3, 2, 5},
+			.res =  (int[]){3, 2, 5},
 			.totl = -1,
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 1,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 2,
 			},
@@ -446,7 +447,7 @@ fn void test_dice_roll_roll () @test {
 
 	foreach (i, tt : tests) {
 		random::srand(tt.seed);
-		DiceRoll* stmt = &&DiceRoll{
+		DiceRoll* stmt = &&(DiceRoll){
 			.multiplier = tt.mux,
 			.die =        tt.die,
 			.modifier =   tt.mod,
@@ -491,7 +492,7 @@ struct DiceRollStringTestStruct{
 
 // // Ensure the dice roll statement can be represented as a string
 fn void test_dice_roll_string() @test {
-	DiceRollStringTestStruct[] tests = DiceRollStringTestStruct[]{
+	DiceRollStringTestStruct[] tests = (DiceRollStringTestStruct[]){
 		// Fate rolls
 		{.seed = 0, .die = &&((FateDie)(0)), .mux = 4, .mod = 2, .res = `+4dF+2`},
 
@@ -517,9 +518,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
@@ -531,9 +532,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
@@ -545,9 +546,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::EXPLODING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
@@ -559,9 +560,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
@@ -573,9 +574,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
@@ -587,9 +588,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::COMPOUNDED,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
@@ -601,9 +602,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::EQUALS,
 					.value = 5,
 				},
@@ -615,9 +616,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::GREATER_THAN,
 					.value = 1,
 				},
@@ -629,9 +630,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 2,
-			.exp = &&ExplodingOp{
+			.exp = &&(ExplodingOp){
 				.type = roll::PENETRATING,
-				.comparison_op = &&ComparisonOp{
+				.comparison_op = &&(ComparisonOp){
 					.type =  roll::LESS_THAN,
 					.value = 2,
 				},
@@ -644,7 +645,7 @@ fn void test_dice_roll_string() @test {
 			.seed = 2,
 			.die =  &&((NormalDie)(6)),
 			.mux =  4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 3,
 			},
@@ -655,7 +656,7 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::KEEP_LOWEST,
 				.amount = 3,
 			},
@@ -666,7 +667,7 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::DROP_LOWEST,
 				.amount = 3,
 			},
@@ -677,7 +678,7 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.lmt = &&LimitOp{
+			.lmt = &&(LimitOp){
 				.type =   roll::DROP_HIGHEST,
 				.amount = 3,
 			},
@@ -688,9 +689,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 1,
 					},
@@ -704,9 +705,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::GREATER_THAN,
 						.value = 4,
 					},
@@ -720,9 +721,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::LESS_THAN,
 						.value = 3,
 					},
@@ -736,9 +737,9 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::LESS_THAN,
 						.value = 4,
 					},
@@ -752,16 +753,16 @@ fn void test_dice_roll_string() @test {
 		{
 			.die = &&((NormalDie)(6)),
 			.mux = 4,
-			.roll = RerollOp[]{
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+			.roll = (RerollOp[]){
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 1,
 					},
 					.once = true,
 				},
-				RerollOp{
-					.comparison_op = &&ComparisonOp{
+				(RerollOp){
+					.comparison_op = &&(ComparisonOp){
 						.type =  roll::EQUALS,
 						.value = 2,
 					},
@@ -782,7 +783,7 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6=6",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 6,
 			},
@@ -793,7 +794,7 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6<5",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
@@ -804,7 +805,7 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6>3",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 3,
 			},
@@ -815,11 +816,11 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6=6f=4",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::EQUALS,
 				.value = 4,
 			},
@@ -830,11 +831,11 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6<5f>5",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 5,
 			},
@@ -845,11 +846,11 @@ fn void test_dice_roll_string() @test {
 			.die = &&((NormalDie)(6)),
 			.mux = 3,
 			.res = "+3d6>4f<5",
-			.succ = &&ComparisonOp{
+			.succ = &&(ComparisonOp){
 				.type =  roll::GREATER_THAN,
 				.value = 4,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&(ComparisonOp){
 				.type =  roll::LESS_THAN,
 				.value = 5,
 			},
@@ -858,7 +859,7 @@ fn void test_dice_roll_string() @test {
 
 	foreach (i, tt : tests) {
 		random::srand(tt.seed);
-		DiceRoll* stmt = &&DiceRoll{
+		DiceRoll* stmt = &&(DiceRoll){
 			.multiplier = tt.mux,
 			.die =        tt.die,
 			.modifier =   tt.mod,
@@ -869,8 +870,8 @@ fn void test_dice_roll_string() @test {
 			.sort =      tt.sort,
 			.limit =      tt.lmt,
 		};
-        String str = stmt.to_string(allocator::heap());
-        defer str.free();
+        String str = stmt.to_string(mem);
+        defer str.free(mem);
         assert(str == tt.res, "%d. result mismatch: exp=%s got=%s", i, tt.res, str);
 	}
 }
@@ -892,80 +893,80 @@ struct GroupedRollRollTestStruct {
 
 
 fn void test_group_roll_roll () @test {
-	GroupedRollRollTestStruct[] tests = GroupedRollRollTestStruct[]{
+	GroupedRollRollTestStruct[] tests = (GroupedRollRollTestStruct[]){
 		// Single roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
 			},
 			.mod =  2,
-			.res =  int[]{20},
+			.res =  ((int[])){20},
 			.totl = 22,
 		},
 		// Combined single roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
 			},
 			.mod =  2,
-			.res =  int[]{9, 10, 9},
+			.res =  (int[]){9, 10, 9},
 			.totl = 30,
 			.comb = true,
 		},
 		// Combined multi-roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = (Roll[]){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
 			},
 			.mod =  0,
-			.res =  int[]{9, 10, 9, 1, 2},
+			.res =  (int[]){9, 10, 9, 1, 2},
 			.totl = 31,
 			.comb = true,
 		},
 		// Multi-roll with limit
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = (Roll[]){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
 				},
 			},
 			.mod =  2,
-			.res =  int[]{20, 13},
+			.res =  (int[]){20, 13},
 			.totl = 35,
-			.lmit = &&LimitOp{
+			.lmit = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 1,
 			},
@@ -973,28 +974,28 @@ fn void test_group_roll_roll () @test {
 		// Multi-roll combined with limit
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = (Roll[]){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
 				},
 			},
 			.mod =  2,
-			.res =  int[]{12, 11},
+			.res =  (int[]){12, 11},
 			.totl = 25,
 			.comb = true,
-			.lmit = &&LimitOp{
+			.lmit = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 4,
 			},
@@ -1002,31 +1003,31 @@ fn void test_group_roll_roll () @test {
 		// Multi-roll with succ/fail
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = (Roll[]){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
 				},
 			},
 			.mod =  0,
-			.res =  int[]{20, 1, 13},
+			.res =  (int[]){20, 1, 13},
 			.totl = 2,
-			.succ = &&ComparisonOp{
+			.succ = &&((ComparisonOp)){
 				.type =  roll::GREATER_THAN,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&((ComparisonOp)){
 				.type =  roll::EQUALS,
 				.value = 3,
 			},
@@ -1035,32 +1036,32 @@ fn void test_group_roll_roll () @test {
 		// Multi-roll combined with succ/fail
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = (Roll[]){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
 				},
 			},
 			.mod =  0,
-			.res =  int[]{9, 10, 9, 1, 12, 11},
+			.res =  (int[]){9, 10, 9, 1, 12, 11},
 			.totl = 5,
 			.comb = true,
-			.succ = &&ComparisonOp{
+			.succ = &&((ComparisonOp)){
 				.type =  roll::GREATER_THAN,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&((ComparisonOp)){
 				.type =  roll::EQUALS,
 				.value = 3,
 			},
@@ -1070,7 +1071,7 @@ fn void test_group_roll_roll () @test {
 
 	foreach (i, tt : tests) {
 		random::srand(tt.seed);
-		GroupedRoll* stmt = &&GroupedRoll{
+		GroupedRoll* stmt = &&(GroupedRoll){
 			.rolls =    tt.rolls,
 			.modifier = tt.mod,
 			.limit =    tt.lmit,
@@ -1109,12 +1110,12 @@ struct GroupedRollStringTestStruct {
 
 // Ensure the group dice roll statement string representation is correct
 fn void test_group_roll_string() @test {
-	GroupedRollStringTestStruct[] tests = GroupedRollStringTestStruct[] {
+	GroupedRollStringTestStruct[] tests = (GroupedRollStringTestStruct[]) {
 		// Single roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
@@ -1126,8 +1127,8 @@ fn void test_group_roll_string() @test {
 		// Combined single roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
@@ -1140,13 +1141,13 @@ fn void test_group_roll_string() @test {
 		// Combined multi-roll
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
@@ -1159,18 +1160,18 @@ fn void test_group_roll_string() @test {
 		// Multi-roll with limit
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
@@ -1178,7 +1179,7 @@ fn void test_group_roll_string() @test {
 			},
 			.mod = 2,
 			.res = "{3d6+4, d4, 2d8+10}kh+2",
-			.lmit = &&LimitOp{
+			.lmit = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 1,
 			},
@@ -1186,18 +1187,18 @@ fn void test_group_roll_string() @test {
 		// Multi-roll combined with limit
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
@@ -1206,7 +1207,7 @@ fn void test_group_roll_string() @test {
 			.mod =  2,
 			.res =  "{3d6+4 + d4 + 2d8+10}kh4+2",
 			.comb = true,
-			.lmit = &&LimitOp{
+			.lmit = &&(LimitOp){
 				.type =   roll::KEEP_HIGHEST,
 				.amount = 4,
 			},
@@ -1214,18 +1215,18 @@ fn void test_group_roll_string() @test {
 		// Multi-roll with succ/fail
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
@@ -1233,11 +1234,11 @@ fn void test_group_roll_string() @test {
 			},
 			.mod = 0,
 			.res = "{3d6+4, d4, 2d8+10}>6f=3",
-			.succ = &&ComparisonOp{
+			.succ = &&((ComparisonOp)){
 				.type =  roll::GREATER_THAN,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&((ComparisonOp)){
 				.type =  roll::EQUALS,
 				.value = 3,
 			},
@@ -1245,18 +1246,18 @@ fn void test_group_roll_string() @test {
 		// Multi-roll combined with succ/fail
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 1,
 					.die =        &&((NormalDie)(4)),
 					.modifier =   0,
 				},
-				&&DiceRoll{
+				&&(DiceRoll){
 					.multiplier = 2,
 					.die =        &&((NormalDie)(8)),
 					.modifier =   10,
@@ -1265,11 +1266,11 @@ fn void test_group_roll_string() @test {
 			.mod =  0,
 			.res =  "{3d6+4 + d4 + 2d8+10}>6f=3",
 			.comb = true,
-			.succ = &&ComparisonOp{
+			.succ = &&((ComparisonOp)){
 				.type =  roll::GREATER_THAN,
 				.value = 6,
 			},
-			.fail = &&ComparisonOp{
+			.fail = &&((ComparisonOp)){
 				.type =  roll::EQUALS,
 				.value = 3,
 			},
@@ -1277,15 +1278,15 @@ fn void test_group_roll_string() @test {
 		// Nested grouped roll combined
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&GroupedRoll{
-					.rolls = Roll[]{
-						&&DiceRoll{
+				&&(GroupedRoll){
+					.rolls = ((Roll[])){
+						&&(DiceRoll){
 							.multiplier = 3,
 							.die =        &&((NormalDie)(6)),
 							.modifier =   4,
@@ -1300,15 +1301,15 @@ fn void test_group_roll_string() @test {
 		// Nested grouped roll non-combined
 		{
 			.seed = 0,
-			.rolls = Roll[]{
-				&&DiceRoll{
+			.rolls = ((Roll[])){
+				&&(DiceRoll){
 					.multiplier = 3,
 					.die =        &&((NormalDie)(6)),
 					.modifier =   4,
 				},
-				&&GroupedRoll{
-					.rolls = Roll[]{
-						&&DiceRoll{
+				&&(GroupedRoll){
+					.rolls = ((Roll[])){
+						&&(DiceRoll){
 							.multiplier = 3,
 							.die =        &&((NormalDie)(6)),
 							.modifier =   4,
@@ -1323,7 +1324,7 @@ fn void test_group_roll_string() @test {
 
 	foreach (i, tt :  tests ) @pool() {
 		random::srand(tt.seed);
-		GroupedRoll* stmt = &&GroupedRoll{
+		GroupedRoll* stmt = &&(GroupedRoll){
 			.rolls =    tt.rolls,
 			.modifier = tt.mod,
 			.limit =    tt.lmit,
@@ -1331,8 +1332,8 @@ fn void test_group_roll_string() @test {
 			.failure =  tt.fail,
 			.combined = tt.comb,
 		};
-        String tmp = stmt.to_string(allocator: allocator::heap());
-        defer tmp.free();
+        String tmp = stmt.to_string(mem);
+        defer tmp.free(mem);
         assert(tt.res == tmp, "%d. result mismatch: exp=%s got=%s", i, tt.res[0..], tmp);
 		// if !reflect.DeepEqual(tt.res, stmt.String()) {
 		// 	t.Errorf("%d. result mismatch: exp=%v got=%v", i, tt.res, stmt.String())

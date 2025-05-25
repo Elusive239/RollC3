@@ -7,10 +7,10 @@ struct TokenScanner{
 	InStream r;
 }
 
-def Rune = char;
-def Token = int;
+alias Rune = char;
+alias Token = int;
 
-def TokenLiteral = Tuple(<Token, String>);
+alias TokenLiteral = Tuple{Token, String};
 
 // DieRoll is the result of a die roll
 struct DieRoll{
@@ -25,7 +25,7 @@ interface Die {
 }
 
 // FateDie is a die representing the typical Fate/Fudge die
-distinct FateDie (Die, Printable) = int;
+typedef FateDie (Die, Printable) = int;
 // NormalDie is a die representing an N-sided die
-distinct NormalDie (Die, Printable) = int;
+typedef NormalDie (Die, Printable) = int;
 
