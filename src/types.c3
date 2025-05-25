@@ -19,9 +19,9 @@ struct DieRoll{
 }
 
 // Die is the interface allDice must confirm to
-interface Die {
+interface Die : Printable {
 	fn DieRoll roll();
-	fn String to_string(Allocator);
+	// fn String to_string(Allocator);
 }
 
 // FateDie is a die representing the typical Fate/Fudge die

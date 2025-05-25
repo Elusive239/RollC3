@@ -870,9 +870,10 @@ fn void test_dice_roll_string() @test {
 			.sort =      tt.sort,
 			.limit =      tt.lmt,
 		};
-        String str = stmt.to_string(mem);
-        defer str.free(mem);
-        assert(str == tt.res, "%d. result mismatch: exp=%s got=%s", i, tt.res, str);
+        DString tmp;
+		tmp.tinit();
+		tmp.appendf("%s", stmt);
+        assert(tmp.str_view() == tt.res, "%d. result mismatch: exp=%s got=%s", i, tt.res, tmp);
 	}
 }
 
@@ -1332,9 +1333,11 @@ fn void test_group_roll_string() @test {
 			.failure =  tt.fail,
 			.combined = tt.comb,
 		};
-        String tmp = stmt.to_string(mem);
-        defer tmp.free(mem);
-        assert(tt.res == tmp, "%d. result mismatch: exp=%s got=%s", i, tt.res[0..], tmp);
+		DString tmp;
+		tmp.tinit();
+		tmp.appendf("%s", stmt);
+
+        assert(tt.res == tmp.str_view(), "%d. result mismatch: exp=%s got=%s", i, tt.res[0..], tmp);
 		// if !reflect.DeepEqual(tt.res, stmt.String()) {
 		// 	t.Errorf("%d. result mismatch: exp=%v got=%v", i, tt.res, stmt.String())
 		// }

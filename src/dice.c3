@@ -1,5 +1,6 @@
 module roll;
 import std::math::random;
+import std::io;
 
 // FateBlank is the symbol for a blank Fate die face
 const String FATE_BLANK = "☐";
@@ -27,8 +28,9 @@ fn DieRoll FateDie.roll(FateDie* d) @dynamic {
 }
 
 // String returns the string representation of the FateDie 
-fn String FateDie.to_string(FateDie* d, Allocator allocator = mem) @dynamic {
-	return string::format(allocator, "dF");
+
+fn String FateDie.to_constant_string(&d)  @dynamic {
+	return "dF";
 }
 
 // Roll generates a random number and the appropriate symbol
@@ -42,6 +44,7 @@ fn DieRoll NormalDie.roll(NormalDie* d) @dynamic  {
 }
 
 // String returns the string representation of the NormalDie 
-fn String NormalDie.to_string(NormalDie* d, Allocator allocator = mem) @dynamic {
-    return string::format(allocator, "d%d",*d);
+
+fn usz? NormalDie.to_format(&d, Formatter* formatter) @dynamic {
+	return formatter.printf("d%d", *d)!;
 }

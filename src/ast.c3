@@ -35,14 +35,14 @@ fn bool ComparisonOp.match(ComparisonOp* op, int val) {
 }
 
 // String returns the string representation of the comparison operator
-fn String ComparisonOp.to_string(ComparisonOp* op, Allocator allocator = mem) @dynamic {
+fn usz? ComparisonOp.to_format(ComparisonOp* op,  Formatter* formatter) @dynamic {
 	switch (op.type) {
         case GREATER_THAN:
-            return string::format(allocator, ">%d", op.value);
+            return formatter.printf(">%d", op.value)!;
         case LESS_THAN:
-            return string::format(allocator, "<%d", op.value);
+            return formatter.printf("<%d", op.value)!;
         case EQUALS:
-            return string::format(allocator, "=%d", op.value);
+            return formatter.printf("=%d", op.value)!;
         default: unreachable("How did we get here?");
 	}
 }
@@ -64,7 +64,7 @@ struct ExplodingOp (Printable) {
 }
 
 // String returns the string representation of the exploding dice operation
-fn String ExplodingOp.to_string(ExplodingOp* e, Allocator allocator = mem) @dynamic => @pool() {
+fn usz? ExplodingOp.to_format(ExplodingOp* e,  Formatter* formatter) @dynamic => @pool() {
     String output;
 	switch (e.type) {
         case EXPLODING:
@@ -74,8 +74,11 @@ fn String ExplodingOp.to_string(ExplodingOp* e, Allocator allocator = mem) @dyna
         case PENETRATING:
 		    output = "!p";
 	}
-    String tmp =  e.comparison_op.to_string(allocator: tmem);
-    return string::format(allocator, "%s%s", output, tmp.trim_left( "="));
+
+	DString tmp;
+	tmp.tinit();
+	tmp.appendf("%s", e.comparison_op);
+	return formatter.printf("%s%s",output,tmp.str_view().trim_left("="))!;
 }
 
 // LimitType is the type of roll limitation
@@ -96,7 +99,7 @@ struct LimitOp (Printable) {
 	LimitType type;
 }
 
-fn String LimitOp.to_string (LimitOp* op, Allocator allocator = mem) @dynamic {
+fn usz? LimitOp.to_format (LimitOp* op, Formatter* formatter) @dynamic {
 	String output;
     switch (op.type) {
         case KEEP_HIGHEST:
@@ -110,12 +113,10 @@ fn String LimitOp.to_string (LimitOp* op, Allocator allocator = mem) @dynamic {
 	}
 
 	if (op.amount > 1) {
-        output = string::format(allocator, "%s%d", output, op.amount);
+		return formatter.printf("%s%d", output, op.amount)!;
 	}else {
-        output = string::format(allocator, "%s", output);
+		return formatter.printf("%s", output)!;
     }
-
-	return output;
 }
 
 // RerollOp is the operation that defines how dice are rerolled
@@ -125,14 +126,27 @@ struct RerollOp (Printable) {
 }
 
 // String returns the string representation of the reroll operation
-fn String RerollOp.to_string (RerollOp* e, Allocator allocator = mem) @dynamic => @pool() {
+// fn String RerollOp.to_string (RerollOp* e, Allocator allocator = mem) @dynamic => @pool() {
+//     String output = "r";
+// 	if (e.once) {
+// 		output = "ro";
+// 	}
+//     String tmp = e.comparison_op.to_string(allocator: tmem);
+//     return string::format(allocator, "%s%s", output, tmp.trim_left("="));
+// }
+
+fn usz? RerollOp.to_format (RerollOp* e, Formatter* formatter) @dynamic => @pool() {
     String output = "r";
 	if (e.once) {
 		output = "ro";
 	}
-    String tmp = e.comparison_op.to_string(allocator: tmem);
-    return string::format(allocator, "%s%s", output, tmp.trim_left("="));
+	
+	DString tmp;
+	tmp.tinit();
+	tmp.appendf("%s", e.comparison_op);
+	return formatter.printf("%s%s",output,tmp.str_view().trim_left("="))!;
 }
+
 
 // SortType is the type of sorting to use for dice roll results
 typedef SortType (Printable) = int;
@@ -145,19 +159,16 @@ const SortType ASCENDING  = 1;
 const SortType DESCENDING = 2;
 
 // String return the string representation of a SortType value
-fn String SortType.to_string (SortType* t, Allocator allocator = mem) @dynamic {
-    String output;
+fn String SortType.to_constant_string (SortType* t) @dynamic {
 	switch (*t) {
-	case ASCENDING:
-		output = "s";
-	case DESCENDING:
-		output = "sd";
-	case UNSORTED:
-    default: 
-        output = "";
+		case ASCENDING:
+			return "s";
+		case DESCENDING:
+			return "sd";
+		case UNSORTED:
+		default: 
+			return "";
 	}
-
-	return string::format(allocator, output);
 }
 
 // Roll is any kind of roll
@@ -323,50 +334,48 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	return result;
 }
 
-// String represents the dice roll as a string
-fn String DiceRoll.to_string (DiceRoll* dr, Allocator allocator = mem) @dynamic {
-    DString output;
-	output.init(allocator);
-    defer output.free();
+// usz represents the dice roll as a string
+fn usz? DiceRoll.to_format (DiceRoll* dr, Formatter* output) @dynamic {
+	usz amount;
 	if (dr.multiplier > 1 || dr.multiplier < -1) {
-		output.appendf("%+d", dr.multiplier);
+		amount += output.printf("%+d", dr.multiplier)!;
 	} else if (dr.multiplier == -1) {
-		output.appendf("-");
+		amount += output.printf("-")!;
 	} else if (dr.multiplier == 1) {
-		output.appendf("+");
+		amount += output.printf("+")!;
 	}
 
 	if(dr.die != null){
-		String str = dr.die.to_string(allocator);
-		output.appendf("%s", str);
-		str.free(allocator);
+		// String str = dr.die.to_string(allocator);
+		amount += output.printf("%s", dr.die)!;
+		// str.free(allocator);
 	}
 
 	if (dr.modifier != 0 ){
-        output.appendf("%+d", dr.modifier);
+        amount += output.printf("%+d", dr.modifier)!;
 	}
 
 	foreach  (r : dr.rerolls) {
-		output.appendf("%s", r);
+		amount += output.printf("%s", r)!;
 	}
 
 	if (dr.exploding != null) {
-        output.appendf("%s", *dr.exploding);
+        amount += output.printf("%s", *dr.exploding)!;
 	}
 
     if (dr.limit != null) {
-        output.appendf("%s", *dr.limit);
+        amount += output.printf("%s", *dr.limit)!;
 	}
 
     if (dr.success != null) {
-        output.appendf("%s", *dr.success);
+        amount += output.printf("%s", *dr.success)!;
 	}
 
     if (dr.failure != null) {
-        output.appendf("f%s", *dr.failure);
+        amount += output.printf("f%s", *dr.failure)!;
 	}
-    output.appendf("%s", dr.sort);
-	return output.copy_str(allocator);
+    amount += output.printf("%s", dr.sort)!;
+	return amount;
 }
 
 // GroupedRoll is a group of other rolls. You can have nested groups.
@@ -438,8 +447,9 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 	return result;
 }
 
-// String represents the grouped roll as a string
-fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = mem) @dynamic {
+// usz represents the grouped roll as a string
+fn usz? GroupedRoll.to_format (GroupedRoll* gr, Formatter* formatter) @dynamic => @pool() {
+	
     List{String} parts;
     parts.tinit();
 	// parts := []string{}
@@ -515,7 +525,7 @@ fn String GroupedRoll.to_string (GroupedRoll* gr, Allocator allocator = mem) @dy
         output.insert_char_at(0,'-');
 	}
 
-	return  output.copy_str(allocator);
+	return formatter.printf("%s", output);
 }
 
 fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {

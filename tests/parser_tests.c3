@@ -140,9 +140,7 @@ fn void parser_roll_no_groups_test() @test {
 
     foreach(idx, test : tests){
 		if(catch (roll::END_OF_ROLL?)){
-			String tmp =  test.roll.to_string(tmem);
-			defer tmp.free(tmem);
-			io::printfn("From Test: %s",tmp );
+			io::printfn("From Test: %s",test.roll );
 			continue;			
 		}
         ByteReader br;
