@@ -147,8 +147,7 @@ fn void parser_roll_no_groups_test() @test {
         br.init(test.s);
 		@pool(){
 			Parser* parser = roll::newParser(&br);
-			// defer mem::free(parser.s);
-			// defer roll.free();
+			defer mem::free(parser.s);
 			Roll? roll = parser.parse();
 			if(catch e = roll){
 				// continue;

@@ -4,7 +4,6 @@ import std::core::mem::allocator;
 
 const usz PARSER_DEFAULT_ALLOC = 1024;
 
-
 faultdef UNEXPECTED_TOKEN;
 faultdef UNKNOWN_DIE;
 faultdef END_OF_ROLL;

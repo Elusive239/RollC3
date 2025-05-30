@@ -18,6 +18,14 @@ struct DieRoll{
 	String symbol;
 }
 
+macro void DieRoll.free(&dr, Allocator allocator = mem) {
+	dr.symbol.free(allocator);
+}
+
+fn usz? DieRoll.to_format(&dr, Formatter* formatter) @dynamic {
+	return formatter.printf("%s(%d)", dr.symbol, dr.result)!;
+}
+
 // Die is the interface allDice must confirm to
 interface Die : Printable {
 	fn DieRoll roll();

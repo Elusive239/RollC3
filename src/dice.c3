@@ -20,7 +20,7 @@ fn DieRoll FateDie.roll(FateDie* d) @dynamic {
         case 1:
             sym = FATE_PLUS;
 	}
-
+	
 	return {
 		.result = val,
 		.symbol = string::format(mem, sym),
