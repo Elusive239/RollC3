@@ -160,7 +160,7 @@ fn void parser_roll_no_groups_test() @test {
 				// assert(test.roll.multiplier == roll.multiplier, "%d. Multiplier not equal.", idx);
 				// assert(test.roll.typeid == roll.typeid, "%d. Die type not equal.", idx, test.roll.typeid, roll.typeid);
 				// io::printfn("Get: %s"   ,  roll);
-				// assert(test.roll == roll, "%d. Not equal. Got %s Expected %s", idx , test.roll.to_string(allocator::heap()), roll.to_string(allocator::heap()));
+				// assert(test.roll == roll, "%d. Not equal. Got %s Expected %s", idx );
 			}
         };
     }

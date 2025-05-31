@@ -32,6 +32,13 @@ interface Die : Printable {
 	// fn String to_string(Allocator);
 }
 
+// Gets the result without the symbol, incase you don't need it
+macro int Die.roll_free(&self, Allocator allocator) {
+	DieRoll roll = self.roll();
+	roll.free(allocator);
+	return roll.result;
+}
+
 // FateDie is a die representing the typical Fate/Fudge die
 typedef FateDie (Die, Printable) = int;
 // NormalDie is a die representing an N-sided die

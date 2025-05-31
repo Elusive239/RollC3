@@ -277,23 +277,21 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 		case COMPOUNDED:
 			int compound = 0;
             for(int i =0 ; i < len; i++){
-                DieRoll roll = result.results[i];
-				while (dr.exploding.comparison_op.match(roll.result)) {
-					roll = dr.die.roll();
-					compound += roll.result;
-					roll.symbol.free(mem);
+				int ires = result.results[i].result;
+				while (dr.exploding.comparison_op.match(ires)) {
+					ires = dr.die.roll_free(mem);
+					compound += ires;
 				}
 			}
 			result.results.push ((DieRoll){ .result = compound, .symbol = string::format(mem, "%d", compound) }); 
 		case PENETRATING:
 			for(int i =0 ; i < len; i++){
-                DieRoll roll = result.results[i];
-				for (;dr.exploding.comparison_op.match(roll.result);) {
-					roll = dr.die.roll();
-					roll.symbol.free(mem);
+				int ires = result.results[i].result;
+				for (;dr.exploding.comparison_op.match(ires);) {
+					ires = dr.die.roll_free(mem);
 					result.results.push({
-						.result = roll.result-1,
-						.symbol = string::format(mem, "%d", roll.result-1)
+						.result = ires-1,
+						.symbol = string::format(mem, "%d", ires-1)
 					});
 				}
 			}
@@ -312,16 +310,9 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	// 7. If sort op set, sort results
 	applySort(dr.sort, &result);
 
-	//ASH!!
-	//COMMENT HERE TO CAUSE CRASH
-	// if(catch (END_OF_ROLL?)) return result;
 	// 8. If success and failure ops not set, add modifier to total result
 	finaliseTotals(dr.success, dr.failure, dr.modifier, totalMultiplier, &result);
     
-    // io::printfn("Final Result (DR): ");
-    // foreach (i, r : result.results){
-    //     io::printfn("\t%d: {%s}",i, r.symbol);
-    // }
 	return result;
 }
 
@@ -530,27 +521,26 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 	switch (limitOp.type) {
         case KEEP_HIGHEST:
             while(limit > 0) {
-                // rolls.results.last()!!.symbol.free(tmem);
+				rolls.results.last()!!.free();
                 @catch(rolls.results.remove_last());
                 limit--;
             }
         case KEEP_LOWEST:
-            // rolls.Results = rolls.Results[:limit];
             while(limit-- > rolls.results.len()) {
-                // rolls.results.first()!!.symbol.free(tmem);
-                
+                rolls.results.first()!!.free();
                 @catch(rolls.results.remove_first());
             }
         case DROP_HIGHEST:
             while(limit > 0) {
-                // rolls.results.last()!!.symbol.free(tmem);
+				rolls.results.last()!!.free();
                 @catch(rolls.results.remove_last());
                 limit--;
             }
         case DROP_LOWEST:
-            // rolls.results = rolls.results[limit:];
-            // rolls.results.last()!!.symbol.free(tmem);
-            while(rolls.results.len() > limit) @catch(rolls.results.remove_last());
+            while(rolls.results.len() > limit) {
+				rolls.results.last()!!.free();
+				@catch(rolls.results.remove_last());
+			}
 	}
 
     HashMap{int, int} m;
@@ -564,11 +554,11 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 	}
 
     List{DieRoll} newResults;
-    newResults.init(tmem, initial_capacity: rolls.results.len());
-	foreach (a : result.results) {
+    newResults.tinit(initial_capacity: rolls.results.len());
+	foreach (&a : result.results) {
         int? b = m[a.result];
         if(try b){
-			newResults.push(a);
+			newResults.push(*a);
             b--;
 			if (b == 0) {
                 m.remove(a.result);
