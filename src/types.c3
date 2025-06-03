@@ -7,10 +7,10 @@ struct TokenScanner{
 	InStream r;
 }
 
-def Rune = char;
-def Token = int;
+alias Rune = char;
+alias Token = int;
 
-def TokenLiteral = Tuple(<Token, String>);
+alias TokenLiteral = Tuple{Token, String};
 
 // DieRoll is the result of a die roll
 struct DieRoll{
@@ -18,14 +18,29 @@ struct DieRoll{
 	String symbol;
 }
 
+macro void DieRoll.free(&dr, Allocator allocator = mem) {
+	dr.symbol.free(allocator);
+}
+
+fn usz? DieRoll.to_format(&dr, Formatter* formatter) @dynamic {
+	return formatter.printf("%s(%d)", dr.symbol, dr.result)!;
+}
+
 // Die is the interface allDice must confirm to
-interface Die {
+interface Die : Printable {
 	fn DieRoll roll();
-	fn String to_string(Allocator);
+	// fn String to_string(Allocator);
+}
+
+// Gets the result without the symbol, incase you don't need it
+macro int Die.roll_free(&self, Allocator allocator) {
+	DieRoll roll = self.roll();
+	roll.free(allocator);
+	return roll.result;
 }
 
 // FateDie is a die representing the typical Fate/Fudge die
-distinct FateDie (Die, Printable) = int;
+typedef FateDie (Die, Printable) = int;
 // NormalDie is a die representing an N-sided die
-distinct NormalDie (Die, Printable) = int;
+typedef NormalDie (Die, Printable) = int;
 

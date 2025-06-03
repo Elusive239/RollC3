@@ -9,7 +9,7 @@ struct ScannerTestStruct{
 
 // Ensure the scanner can scan tokens correctly.
 fn void scanner_test() @test {
-	ScannerTestStruct[*] tests = ScannerTestStruct[]{
+	ScannerTestStruct[*] tests = (ScannerTestStruct[]){
 		// Special tokens (EOF, ILLEGAL, WS)
 		{.s = "", .tlit = { .first = roll::EOF, .second = ""}},
 		{.s = "#", .tlit = { .first = roll::ILLEGAL, .second = "#"}},
@@ -68,11 +68,11 @@ fn void scanner_test() @test {
 	foreach (i, tt : tests) {
         ByteReader bytes;
         bytes.init(tt.s);
-		TokenScanner* s = roll::newScanner(&bytes);
-        defer mem::free(s);
-        TokenLiteral tlit =  s.scan();
-        defer tlit.second.free();
-        assert(tt.tlit.first == tlit.first, "%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tlit.first, tlit.first, tlit.second);
-        assert(tt.tlit.second == tlit.second, "%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.tlit.first, tlit.first);
+		@pool() {
+			TokenScanner* s = roll::newScanner(&bytes);
+			TokenLiteral tlit =  s.scan();
+			assert(tt.tlit.first == tlit.first, "%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tlit.first, tlit.first, tlit.second);
+			assert(tt.tlit.second == tlit.second, "%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.tlit.first, tlit.first);
+		};
 	}
 }

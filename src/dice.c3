@@ -1,10 +1,6 @@
 module roll;
 import std::math::random;
-
-// fn void DieRoll.free(DieRoll* dieroll) {
-//     if(dieroll.symbol.len > 0) dieroll.symbol.free();
-// 	dieroll.symbol = "";
-// }
+import std::io;
 
 // FateBlank is the symbol for a blank Fate die face
 const String FATE_BLANK = "☐";
@@ -24,29 +20,31 @@ fn DieRoll FateDie.roll(FateDie* d) @dynamic {
         case 1:
             sym = FATE_PLUS;
 	}
-
-	return DieRoll{
+	
+	return {
 		.result = val,
-		.symbol = string::format(sym, allocator: allocator::heap()),
+		.symbol = string::format(mem, sym),
 	};
 }
 
 // String returns the string representation of the FateDie 
-fn String FateDie.to_string(FateDie* d, Allocator allocator = allocator::heap()) @dynamic {
-	return string::format("dF", allocator: allocator);
+
+fn String FateDie.to_constant_string(&d)  @dynamic {
+	return "dF";
 }
 
 // Roll generates a random number and the appropriate symbol
 fn DieRoll NormalDie.roll(NormalDie* d) @dynamic  {
 	int val = random::rand_in_range(1, (int) *d) ;
- 	String sym = string::format("%d", val, allocator: allocator::heap());
-	return DieRoll{
+ 	String sym = string::format(mem, "%d", val);
+	return  {
 		.result = val,
 		.symbol = sym,
 	};
 }
 
 // String returns the string representation of the NormalDie 
-fn String NormalDie.to_string(NormalDie* d, Allocator allocator = allocator::heap()) @dynamic {
-    return string::format("d%d",*d, allocator: allocator);
+
+fn usz? NormalDie.to_format(&d, Formatter* formatter) @dynamic {
+	return formatter.printf("d%d", *d)!;
 }
