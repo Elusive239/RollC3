@@ -75,8 +75,11 @@ fn void? Parser.parseGroupedRoll(&p, GroupedRoll* roll, bool grouped) { // (roll
 	bool negative;
 	int multiplier;
 
+	//Have to specify this at the start, easier to check later if its not combined.
+	roll.combined = true;
+
 	fault err = @catch(p.parseAndCollectRolls(roll, grouped, &negative, &multiplier));
-	if(err == END_OF_ROLL) return err?;
+	if(err != END_OF_ROLL) return err?;
 	// We now have the collection of rolls within the grouped roll, now we need
 	// to apply the modifiers to it
 	while (true) {
@@ -151,29 +154,32 @@ fn void? Parser.parseGroupedRoll(&p, GroupedRoll* roll, bool grouped) { // (roll
 
 fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* negative, int* multiplier) {
 	fault err;
-	while(!err) {
+	while(err == (fault){}) {
 		TokenLiteral tlit = p.scanIgnoreWhitespace();
 		any anyr;
 		err = @catch(p.parseRoll(&anyr, tlit, true));
+
 		switch{
 			case anyr == null: break;
 			case anyr.type == GroupedRoll.typeid:
 				GroupedRoll* gr = anycast(anyr, GroupedRoll)!;
-				if(*multiplier < 0 ){
-					gr.negative = true;
-					*multiplier = 0;
-				}
-				if(*negative){
-					gr.negative = true;
+				if(*multiplier != 0){ 
+					if(*multiplier < 0 ){
+						gr.negative = true;
+						*multiplier = 0;
+					}
+					if(*negative){
+						gr.negative = true;
+					}
 				}
 			case anyr.type == DiceRoll.typeid:
 				DiceRoll* dr = anycast(anyr, DiceRoll)!;
 				if(*multiplier != 0){ 
 					dr.multiplier = *multiplier;
 					*multiplier = 0;
-				}
-				if(*negative){
-					dr.multiplier *= -1;
+					if(*negative){
+						dr.multiplier *= -1;
+					}
 				}
 			default: unreachable("Unimplemented roll type.");
 		}	
@@ -190,6 +196,7 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 			// to use this modifier as it's multiplier, so store it for later
 			if(err == AMBIGUOUS_MODIFIER){
 				*multiplier = p.modifier;
+				p.modifier = 0;
 				p.unscan();
 				err = {};
 			}else{
@@ -219,6 +226,13 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 						p.unscan();
 						err = {};
 					case GROUPEND:
+						// Have to append the roll before we back out! (altered from original)
+						switch{
+							case anyr == null: break;
+							case anyr.type == DiceRoll.typeid :  append_roll(&p.alloc, roll, anyr, DiceRoll);
+							case anyr.type == GroupedRoll.typeid :  append_roll(&p.alloc, roll, anyr, GroupedRoll);
+							default: unreachable("Unimplemented roll type.");
+						}
 						// We've exited the group, so leave loop by letting error fall
 						// through
 						return END_OF_ROLL?;
@@ -231,8 +245,8 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 
 		// If we've ended up with a dummy roll for some reason, don't add it (if anyr == null)
 		if (anyr != null) switch(anyr.type){
-			case DiceRoll.typeid :  append_roll(mem, roll, anyr, DiceRoll);
-			case GroupedRoll.typeid :  append_roll(mem, roll, anyr, GroupedRoll);
+			case DiceRoll.typeid :  append_roll(&(p.alloc), roll, anyr, DiceRoll);
+			case GroupedRoll.typeid :  append_roll(&(p.alloc), roll, anyr, GroupedRoll);
 			//if we get to here, we somehow returned something thats NOT a roll, which we shouldn't be doing...
 			default: return err?;
 		}
@@ -243,7 +257,7 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 macro void append_roll(Allocator allocator, GroupedRoll* roll, any anyr, $Type) {
 	usz elements = roll.rolls.len;
 	usz new_size = Roll.sizeof * (elements + 1);
-	roll.rolls = ((Roll*)allocator::realloc(mem, (void*) roll.rolls.ptr, new_size))[:elements+1];
+	roll.rolls = ((Roll*)allocator::realloc(allocator, (void*) roll.rolls.ptr, new_size))[:elements+1];
 	roll.rolls[elements]= anycast(anyr, $Type)!!;
 }
 
@@ -294,8 +308,7 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 				p.unscan();
 				tlit = p.scanIgnoreWhitespace();
 				switch (tlit.first) {
-				case EOF:
-					return;
+				case EOF: return;
 				case GROUPSTART:
 					if (grouped) {
 						// Technically this is an end of roll, but we want to
@@ -339,7 +352,7 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 			if(try rr){
 				usz elements = roll.rerolls.len;
 				usz new_size = RerollOp.sizeof * (elements + 1);
-				roll.rerolls = ((RerollOp*)allocator::realloc(allocator::temp(), (void*) roll.rerolls.ptr, new_size))[:elements+1];
+				roll.rerolls = ((RerollOp*)allocator::realloc(& p.alloc, (void*) roll.rerolls.ptr, new_size))[:elements+1];
 				roll.rerolls[elements] = rr;
 			}
 		case GREATER:
@@ -365,13 +378,12 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 			if (grouped && (lastTok == PLUS || lastTok == MINUS)) {
 				p.unscan();
 				roll.modifier -= mod;
+				p.modifier = mod;
 				return AMBIGUOUS_MODIFIER?;
 			}
 			return UNEXPECTED_TOKEN?;
 		default: 
-			// io::printfn("Final Token: %s %d", tlit.second, tlit.first);
 		return UNEXPECTED_TOKEN?;
-			// return nil, ErrUnexpectedToken(lit)
 		}
 
 		// If there is an error, lets bail out
@@ -413,12 +425,7 @@ fn int? Parser.parseModifier(&p, Token tok) { //(int, error)
 	}
 
 	// Add to statement modifer
-	int? mod = tlit.second.to_int();
-	if(catch err = mod) {
-		p.unscan();
-		io::printfn("Err, %s", err);
-		return err?;
-	}
+	int mod = tlit.second.to_int()!!;
 	return mult*mod;
 }
 
@@ -436,7 +443,6 @@ fn ParsedDie? Parser.parseDie(&p, String dieCode) { //(Die, error)
 	if( trimmedDieCode == "F") {
 		return {FateDie.typeid, 0};
 	}
-	// io::printfn("Invalid Die Code: \"%s\" from \"%s\"", trimmedDieCode, dieCode);
 	return UNKNOWN_DIE?;
 }
 
