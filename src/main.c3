@@ -1,20 +1,15 @@
 module main;
 import std::io;
 import roll; 
+import std::math::random;
 
-fn void main() {
-    // io::printfn("Hello World!");
-    ByteReader br;
-    br.init("6dF");
-    Parser* parser = roll::newParser(&br);
-    Roll? roll = parser.parse();
-    Result result = roll.roll()!!;
-    if(catch err = roll){
-        io::printfn("%s", err);
+fn void main(String[] args) {
+    String input = args[1];
+    String? output = roll::parse_string(input);
+    defer (void) output.free(mem);
+    if(catch err = output) {
+        io::printfn("Error: %s", err);
+    }else{
+        io::printfn("%s", output);
     }
-    io::printfn("roll = {%s}", roll!!);
-    io::printfn("%s", result);
-    // io::print("[");
-    // foreach (res : result.results) io::printf("%d(%s), ", res.result, res.symbol);
-    // io::printfn("] Total: %d, Successes: %d", result.total, result.successes);
 }
