@@ -4,10 +4,11 @@ import std::core::mem::allocator;
 
 const usz PARSER_DEFAULT_ALLOC = 1024;
 
-faultdef UNEXPECTED_TOKEN;
-faultdef UNKNOWN_DIE;
-faultdef END_OF_ROLL;
-faultdef AMBIGUOUS_MODIFIER;
+faultdef UNEXPECTED_TOKEN   ;
+faultdef UNKNOWN_DIE        ;
+faultdef END_OF_ROLL        ;
+faultdef AMBIGUOUS_MODIFIER ;
+
 
 struct ParsedDie{
 	typeid type;
@@ -273,7 +274,6 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		roll.die = p.pclone(((FateDie) 0));
 	}
 
-	if(catch (END_OF_ROLL?)) return; // PROBLEM IS ABOVE
 	int mod;
 	Token lastTok;
 
@@ -285,13 +285,8 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		switch (tlit.first) {
 		case PLUS:
 		case MINUS:
-
 			int? moderr = p.parseModifier(tlit.first);
-			if ( try moderr ) {
-				mod = moderr;
-				roll.modifier += mod;
-			}
-			else if (catch err = moderr){
+			if (catch err = moderr){
 				if (tlit.first == MINUS) {
 					mod = -1;
 				}
@@ -310,8 +305,8 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 						return AMBIGUOUS_MODIFIER?;
 					}
 					return UNEXPECTED_TOKEN?;
-				case GROUPEND:
 				case GROUPSEP:
+				case GROUPEND:
 					if (grouped) {
 						return END_OF_ROLL?;
 					}
@@ -319,6 +314,9 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 				default:
 					return err?;
 				}
+			}else{
+				mod = moderr;
+				roll.modifier += mod;
 			}
 		case EXPLODE:
 		case COMPOUND:

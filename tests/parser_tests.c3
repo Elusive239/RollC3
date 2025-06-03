@@ -276,18 +276,16 @@ fn void parser_roll_failures_test() @test {
 	};
 
 	foreach(idx, test : tests){
-		
-        ByteReader br;
-        br.init(test.s);
 		@pool(){
+			ByteReader br;
+			br.init(test.s);
 			Parser* parser = roll::newParser(&br, tmem);
 			Roll? roll = parser.parse();
 			if(catch e = roll){
 				assert(e == test.err, "%d. Parser error, Got %s, Expected %s", idx, e, test.err);
 			}else {
-				assert(false, "Roll didn't return an error. Result: {%s}", roll);
+				assert(false, "%d. Roll didn't return an error. Result: %s",idx, roll);
 			}
-			
         };
     }
 }

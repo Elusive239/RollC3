@@ -572,7 +572,6 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
     result.results.free();
 	result.results = {};
 	result.results.init_wrapping_array(mem, newResults.to_array(mem));
-    // newResults.free();
 }
 
 fn void applySuccess(ComparisonOp* successOp ,int modifier , Result* result) {
