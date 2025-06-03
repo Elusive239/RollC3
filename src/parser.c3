@@ -20,6 +20,7 @@ struct Parser{
 		TokenLiteral tlit;
 		int    n;
 	}
+	int modifier;
 	DynamicArenaAllocator alloc;
 }
 
@@ -56,35 +57,197 @@ fn void? Parser.parseRoll(&p, any* roll, TokenLiteral tlit, bool grouped) { //(R
 			DiceRoll* rd = p.pclone((DiceRoll){});
 			fault err = @catch(p.parseDiceRoll(rd, grouped));
 			(*roll) = any_make(rd, DiceRoll.typeid);
-			if(err){
-				io::printfn("Err: %s", err);
-				return err?; 
-			}
+			if(err) return err?; 
 		case GROUPSTART:
 			GroupedRoll* rd = p.pclone((GroupedRoll){});
 			fault err = @catch(p.parseGroupedRoll(rd, grouped));
 			(*roll) = any_make(rd, GroupedRoll.typeid);
-			if(err){
-				io::printfn("Err: %s", err);
-				return err?; 
-			}
+			if(err) return err?; 
 		default:
 			*roll = null;
 			return UNEXPECTED_TOKEN?;
 	}
-	// return UNEXPECTED_TOKEN?;
 }
-
-//parseGroupedRoll V
 
  // parseGrouped parses a GroupedRoll statement
 fn void? Parser.parseGroupedRoll(&p, GroupedRoll* roll, bool grouped) { // (roll *GroupedRoll, err error) 
+	bool negative;
+	int multiplier;
 
+	fault err = @catch(p.parseAndCollectRolls(roll, grouped, &negative, &multiplier));
+	if(err == END_OF_ROLL) return err?;
+	// We now have the collection of rolls within the grouped roll, now we need
+	// to apply the modifiers to it
+	while (true) {
+		// Read a modifier
+		TokenLiteral tlit = p.scanIgnoreWhitespace();
+
+		// Handle modifier or EOF
+		switch (tlit.first) {
+			case PLUS:
+			case MINUS:
+			int? moderr = p.parseModifier(tlit.first);
+
+			if (try moderr) {
+				roll.modifier += moderr;
+			} else {
+				int mod;
+				if (tlit.first == MINUS) {
+					mod = -1;
+				}
+				p.unscan();
+				tlit = p.scanIgnoreWhitespace();
+
+				switch (tlit.first) {
+					case EOF:
+						return END_OF_ROLL?;
+					case GROUPSTART:
+						if (grouped) {
+							// Technically this is an end of roll, but we want to
+							// capture the multiplier to determine the sign of the
+							// next term
+							p.modifier = mod;
+							return AMBIGUOUS_MODIFIER?;
+						}
+						return UNEXPECTED_TOKEN?;
+					case GROUPEND:
+					case GROUPSEP:
+						if (grouped) {
+							return END_OF_ROLL?;
+						}
+						return UNEXPECTED_TOKEN?;
+					default:
+						return err?;
+				}
+			}
+			case KEEPHIGH:
+			case KEEPLOW:
+			case DROPHIGH:
+			case DROPLOW:
+				roll.limit = p.parseLimit(tlit)!;
+			case GREATER:
+			case LESS:
+			case EQUAL:
+				p.unscan();
+				roll.success = p.parseComparison()!;
+			case FAILURES:
+				roll.failure = p.parseComparison()!;
+			case EOF:
+				return END_OF_ROLL?;
+			case GROUPSEP:
+				if (grouped) {
+					return END_OF_ROLL?;
+				}
+				return UNEXPECTED_TOKEN?;
+			case GROUPEND:
+				p.unscan();
+				return;
+			default:
+				return UNEXPECTED_TOKEN?;
+		}
+	}
 }
-//parseDiceRoll    V
+
+fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* negative, int* multiplier) {
+	fault err;
+	while(!err) {
+		TokenLiteral tlit = p.scanIgnoreWhitespace();
+		any anyr;
+		err = @catch(p.parseRoll(&anyr, tlit, true));
+		switch{
+			case anyr == null: break;
+			case anyr.type == GroupedRoll.typeid:
+				GroupedRoll* gr = anycast(anyr, GroupedRoll)!;
+				if(*multiplier < 0 ){
+					gr.negative = true;
+					*multiplier = 0;
+				}
+				if(*negative){
+					gr.negative = true;
+				}
+			case anyr.type == DiceRoll.typeid:
+				DiceRoll* dr = anycast(anyr, DiceRoll)!;
+				if(*multiplier != 0){ 
+					dr.multiplier = *multiplier;
+					*multiplier = 0;
+				}
+				if(*negative){
+					dr.multiplier *= -1;
+				}
+			default: unreachable("Unimplemented roll type.");
+		}	
+
+		//if there is a problem, try to correct
+		if(err){
+			*negative = false;
+			// If we got an error and we have no rolls, it's definitely broken
+			if(anyr == null && roll.rolls.len == 0){
+				return err?;
+			}
+
+			// We got an ambiguous modifier, which means the *next* roll needs
+			// to use this modifier as it's multiplier, so store it for later
+			if(err == AMBIGUOUS_MODIFIER){
+				*multiplier = p.modifier;
+				p.unscan();
+				err = {};
+			}else{
+				// Rollback
+				p.unscan();
+				tlit = p.scanIgnoreWhitespace();
+
+				// Handle separators of the group
+				switch (tlit.first) {
+					case PLUS:
+					case MINUS:
+						*negative = true;
+					case GROUPSEP:
+						// If we have multiple rolls and are in combined mode when we
+						// get a separator, then this is an invalid grouped roll
+						if (roll.rolls.len > 1 && roll.combined) {
+							return;
+						}
+
+						// We aren't combining if grouping with the GROUPSEP delimiter
+						roll.combined = false;
+						// We've finished parsing a roll, so reset err for loop
+						err = {};
+					case GROUPSTART:
+						// We've finished parsing a roll, so reset err for loop and
+						// unscan again to start us off on the new group
+						p.unscan();
+						err = {};
+					case GROUPEND:
+						// We've exited the group, so leave loop by letting error fall
+						// through
+						return END_OF_ROLL?;
+					default:
+						// Otherwise it IS an error
+						return err?;
+				}
+			}
+		}
+
+		// If we've ended up with a dummy roll for some reason, don't add it (if anyr == null)
+		if (anyr != null) switch(anyr.type){
+			case DiceRoll.typeid :  append_roll(mem, roll, anyr, DiceRoll);
+			case GroupedRoll.typeid :  append_roll(mem, roll, anyr, GroupedRoll);
+			//if we get to here, we somehow returned something thats NOT a roll, which we shouldn't be doing...
+			default: return err?;
+		}
+	}
+	if(err) return err?;
+}
+
+macro void append_roll(Allocator allocator, GroupedRoll* roll, any anyr, $Type) {
+	usz elements = roll.rolls.len;
+	usz new_size = Roll.sizeof * (elements + 1);
+	roll.rolls = ((Roll*)allocator::realloc(mem, (void*) roll.rolls.ptr, new_size))[:elements+1];
+	roll.rolls[elements]= anycast(anyr, $Type)!!;
+}
+
 // parseDiceRoll parses a DiceRoll statement
 fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *GroupedRoll, err error) 
-	// roll = p.pclone((DiceRoll){});
 	TokenLiteral tlit = p.buf.tlit;
 	
 	// If NUM, we store it as the multiplier, else we use 1
@@ -110,20 +273,6 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		roll.die = p.pclone(((FateDie) 0));
 	}
 
-	// if(roll){ // DEBUG
-	// 	io::printfn("roll.multiplier = %s;", roll.multiplier);
-	// 	if(roll.die       ) io::printfn("roll.die        = %s;", roll.die       );
-	// 	io::printfn("roll.modifier   = %s;", roll.modifier  );
-	// 	if(roll.exploding != null) io::printfn("roll.exploding  = %s;", roll.exploding );
-	// 	if(roll.limit     != null) io::printfn("roll.limit      = %s;", roll.limit     );
-	// 	if(roll.success   != null) io::printfn("roll.success    = %s;", roll.success   );
-	// 	if(roll.failure   != null) io::printfn("roll.failure    = %s;", roll.failure   );
-	// 	if(roll.rerolls   .len != 0) io::printfn("roll.rerolls    = %s;", roll.rerolls   );
-	// 	io::printfn("roll.sort       = %s;", roll.sort      );
-	// }
-
-	// io::printfn("roll = %s;", roll.to_string(&p.alloc));
-	// io::printfn("roll.die = %s;", roll.die.to_string(&p.alloc));
 	if(catch (END_OF_ROLL?)) return; // PROBLEM IS ABOVE
 	int mod;
 	Token lastTok;
@@ -157,6 +306,7 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 						// Technically this is an end of roll, but we want to
 						// capture the multiplier to determine the sign of the
 						// next term
+						p.modifier = mod;
 						return AMBIGUOUS_MODIFIER?;
 					}
 					return UNEXPECTED_TOKEN?;
@@ -198,17 +348,8 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		case LESS:
 		case EQUAL:
 			p.unscan();
-			// ComparisonOp*? success = p.parseComparison();
-			// if(try success){
-			// 	roll.success = success;
-			// }
 			roll.success = p.parseComparison()!;
 		case FAILURES:
-			// roll.Failure, err = p.parseComparison()
-			// ComparisonOp*? failure = p.parseComparison();
-			// if(try failure){
-			// 	roll.failure = failure;
-			// }
 			roll.failure = p.parseComparison()!;
 		case EOF: 
 			return;
@@ -297,7 +438,7 @@ fn ParsedDie? Parser.parseDie(&p, String dieCode) { //(Die, error)
 	if( trimmedDieCode == "F") {
 		return {FateDie.typeid, 0};
 	}
-	io::printfn("Invalid Die Code: \"%s\" from \"%s\"", trimmedDieCode, dieCode);
+	// io::printfn("Invalid Die Code: \"%s\" from \"%s\"", trimmedDieCode, dieCode);
 	return UNKNOWN_DIE?;
 }
 
