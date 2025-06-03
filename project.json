@@ -10,7 +10,7 @@
   // Authors, optionally with email.
   "authors": [ "Elusive239 <@elusive-noir.bsky.social" ],
   // Version using semantic versioning.
-  "version": "0.1.0",
+  "version": "1.0",
   // Sources compiled for all targets.
   "sources": [ "src/**" ],
   // Test sources compiled for all targets.

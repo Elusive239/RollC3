@@ -1,5 +1,5 @@
 # rollC3
-So I was going to make my own fancy dice engine in C3, and try to follow the Roll20 rules for rolling, when 
-I discovered [**roll**](https://github.com/darkliquid/roll.git) which happened do everything I wanted... in go!  
+So I was going to make my own fancy dice engine in C3, and try to follow the Roll20 rules for rolling, when I discovered [**roll**](https://github.com/darkliquid/roll.git) which happened do everything I wanted... but in go!  
 
-so NOW this is a port of **roll** to C3, **rollC3**! Currently in progress, does not work at all nor is finished. This will take a bit.
+so NOW this is a port of **roll** to C3, **rollC3**!  
+It should now be on par with the original go implementation, but there are some portions I feel could do with a minor rewrite. 

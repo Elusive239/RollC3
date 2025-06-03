@@ -1,10 +1,10 @@
 module roll;
 import std::io;
 
-fn String? parse_string(String rollStr) {
+fn String? parse_string(String rollStr, Allocator allocator = mem) {
     ByteReader br;
     br.init(rollStr);
-    return parse(&br);
+    return parse(&br, allocator);
     // unreachable("IN PROGRESS");
 }
 
