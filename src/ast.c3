@@ -384,13 +384,11 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 			int mod = roll.mod();
 
             Result roll_result = roll.roll();
-            // defer roll_result.free();
             foreach( &res : roll_result.results) {
                 result.results.push((DieRoll){
 					res.result + mod,
                     string::format(mem, "%d", res.result + mod)
 				});
-				io::printfn("Result: %s", *res);
                 res.symbol.free(mem);
 			}
 		} else {
@@ -419,29 +417,20 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 		result.total *= -1;
 		foreach (i, &r : result.results ){
 			r.result *= -1;
-			// result.results[i] = *r;
 		}
 	}
-    // io::printfn("Final Result (GR): ");
-    // foreach (i, r : result.results){
-    //     io::printfn("\t%d: {%s}",i, r.symbol);
-    // }
+    
 	return result;
 }
 
 // usz represents the grouped roll as a string
 fn usz? GroupedRoll.to_format (GroupedRoll* gr, Formatter* formatter) @dynamic => @pool() {
-	
     List{String} parts;
     parts.tinit();
-	// parts := []string{}
     
 	foreach (roll : gr.rolls) {
 		if( roll != null) {
-			// parts = append(parts, roll.String())
-            // String test = string::format(allocator, "%s",*roll, allocator: tmem);
             parts.push( string::format( tmem, "%s",roll));
-            // io::printfn("GOT: %s", test);
 		}
 	}
     
@@ -450,28 +439,20 @@ fn usz? GroupedRoll.to_format (GroupedRoll* gr, Formatter* formatter) @dynamic =
         sep = " + ";
 	}
  
-    // output.append(test);
     DString  output;
     output.tinit();
     String joined = string::join(tmem, parts.array_view(), sep);
     output.append(joined);
-    defer {
-        output.free();
-        // joined.free();
-    }
+    defer output.free();
 
 	if (gr.combined) {
-		// output = strings.Replace(output, "+-", "-", -1);
-        // while(output.str_view().contains("+-")) 
         output.replace("+-", "-");
 	} else if (gr.rolls.len == 1) {
 		// This case should be impossible, but we want to be able to identify
 		// it if it *does* somehow happen.
-		// output += ","
         output.append(",");
 	}
 
-	// output = "{" + output + "}";
     output.insert_char_at(0,'{');
     output.append_char('}');
 	output.replace("{+", "{");
@@ -607,7 +588,6 @@ fn void applySort(SortType sortType,Result* result ) {
 
 fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modifier,int multiplier ,Result* result ) {
 	if (successOp == null && failureOp == null) {
-			// io::printfn("Roll: %s", result.results[0].symbol);
 		foreach (roll : result.results ){
 			result.total += roll.result;
 		}
@@ -620,7 +600,6 @@ fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modi
 
 // insertion stort: https://www.geeksforgeeks.org/insertion-sort-algorithm/
 fn void sort(Result* result, bool reverse = false) {
-	// io::printfn("Sort Start: %s", *result);
     List{DieRoll}* rolls = &result.results;
     int len = (int) rolls.len();
     for(int i =1; i < len; i++){
@@ -641,20 +620,4 @@ fn void sort(Result* result, bool reverse = false) {
 
         (*rolls)[(usz)(j + 1)] = key;
     }
-	// io::printfn("Sort End: %s", *result);
-    /*
-        for (int i = 1; i < n; ++i) {
-            int key = arr[i];
-            int j = i - 1;
-
-            /* Move elements of arr[0..i-1], that are
-            greater than key, to one position ahead
-            of their current position */
-            while (j >= 0 && arr[j] > key) {
-                arr[j + 1] = arr[j];
-                j = j - 1;
-            }
-            arr[j + 1] = key;
-        }
-    */
 }
