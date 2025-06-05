@@ -3,18 +3,15 @@ import std::io;
 import roll; 
 import std::math::random;
 
-fn void main(String[] args) => @pool() {
+fn int main(String[] args) => @pool() {
     if(args.len <2 ) {
         io::printfn("Requires 1 min argument..");
-        return;
+        return 1;
     }
-
-    String input = string::join(tmem, args[1..], "").trim();
+    String input = string::join (tmem, args[1..], "").trim();
     String? output = roll::parse_string(input);
     defer (void) output.free(mem);
-    if(catch err = output) {
-        io::printfn("Error: %s", err);
-    }else{
-        io::printfn("%s", output);
-    }
+    if(catch err = output) err?!!;
+    io::printfn("%s", output);
+    return 0;
 }
