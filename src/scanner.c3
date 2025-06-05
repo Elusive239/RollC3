@@ -1,5 +1,11 @@
 module roll;
 import std::io;
+import std::collections::tuple;
+
+alias Rune = char;
+alias Token = int;
+
+alias TokenLiteral = Tuple{Token, String};
 
 Rune eof;
 
@@ -53,7 +59,10 @@ fn bool isValidDieRoll(Rune ch) {
 	return !isWhitespace(ch) && !isGrouping(ch) && !isReroll(ch) && !isExploding(ch) && !isCompare(ch) && !isModifier(ch) && !isKeepLimit(ch) && ch != 'd' && ch != 'D';
 }
 
-// Scanner
+// Scanner is our lexical scanner for dice roll strings
+struct TokenScanner{
+	InStream r;
+}
 
 // NewScanner returns a new instance of scanner
 macro TokenScanner* newScanner(InStream r)  {
