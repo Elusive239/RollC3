@@ -15,7 +15,6 @@ const ComparisonType LESS_THAN = 2;
 
 // ComparisonOp is the operation that defines how you compare against a roll
 // to determine whether the result counts
-
 struct ComparisonOp (Printable) {
 	ComparisonType type;
     int value;
@@ -176,9 +175,7 @@ struct Result (Printable) {
 }
 
 // Len is the number of results
-fn int Result.len(Result* r) {
-    return (int) r.results.len();
-}
+fn int Result.len(Result* r) => (int) r.results.len();
 
 // Less return true if DieRoll at index i is less than the one at index j
 fn bool Result.less(Result* r, int i, int j) {
@@ -193,10 +190,7 @@ fn void Result.swap(Result* r, int i, int j) {
 }
 
 fn void Result.free(&self) {
-    foreach(&r : self.results){
-        // io::printfn("SYMBOL: [%s]", r.symbol);
-        r.symbol.free(mem);
-    }
+    foreach(&r : self.results) r.symbol.free(mem);
     self.results.free();
 }
 
@@ -228,22 +222,15 @@ fn int DiceRoll.mod(&self) @dynamic  => self.modifier;
 fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
     Result result;
 	// 1. Do Multiplier rolls of Die
-	if (dr.multiplier == 0 ){
-		return result;
-	}
+	if (dr.multiplier == 0 ) return result;
 
 	int totalMultiplier = 1;
-	if (dr.multiplier < 0) {
-		totalMultiplier = -1;
-	}
+	if (dr.multiplier < 0) totalMultiplier = -1;
 
-	for( int i = 0; i < dr.multiplier*totalMultiplier; i++) {
-		DieRoll roll = dr.die.roll();
-        result.results.push(roll);
-	}
+	for( int i = 0; i < dr.multiplier*totalMultiplier; i++) result.results.push(dr.die.roll());
 
 	// 2. For each result, check reroll criteria and reroll if a match
-	foreach (i, &roll : result.results ) {
+	foreach (usz i, DieRoll* &roll : result.results ) {
         bool do_reroll = true;
         while(do_reroll) {
             do_reroll= false;
@@ -306,7 +293,6 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 	// 6. If failure op set, add modifier to each result and subtract successes for each match
 	applyFailure(dr.failure, dr.modifier, &result);
 
-	
 	// 7. If sort op set, sort results
 	applySort(dr.sort, &result);
 
@@ -319,45 +305,24 @@ fn Result DiceRoll.roll(DiceRoll* dr) @dynamic  {
 // usz represents the dice roll as a string
 fn usz? DiceRoll.to_format (DiceRoll* dr, Formatter* output) @dynamic {
 	usz amount;
-	if (dr.multiplier > 1 || dr.multiplier < -1) {
-		amount += output.printf("%+d", dr.multiplier)!;
-	} else if (dr.multiplier == -1) {
-		amount += output.printf("-")!;
-	} else if (dr.multiplier == 1) {
-		amount += output.printf("+")!;
+	
+	switch{
+		case dr.multiplier < -1 || dr.multiplier > 1:  	amount += output.printf("%+d", dr.multiplier)!;
+		case dr.multiplier == -1: 						amount += output.printf("-")!;
+		case dr.multiplier == 1:  						amount += output.printf("+")!;
 	}
 
-	if(dr.die != null){
-		// String str = dr.die.to_string(allocator);
-		amount += output.printf("%s", dr.die)!;
-		// str.free(allocator);
-	}
+	if (dr.die != null)       amount += output.printf("%s", dr.die)!;
+	if (dr.modifier != 0 )    amount += output.printf("%+d", dr.modifier)!;
 
-	if (dr.modifier != 0 ){
-        amount += output.printf("%+d", dr.modifier)!;
-	}
+	foreach  (r : dr.rerolls) amount += output.printf("%s", r)!;
 
-	foreach  (r : dr.rerolls) {
-		amount += output.printf("%s", r)!;
-	}
+	if (dr.exploding != null) amount += output.printf("%s", *dr.exploding)!;
+    if (dr.limit != null)     amount += output.printf("%s", *dr.limit)!;
+    if (dr.success != null)   amount += output.printf("%s", *dr.success)!;
+    if (dr.failure != null)   amount += output.printf("f%s", *dr.failure)!;
 
-	if (dr.exploding != null) {
-        amount += output.printf("%s", *dr.exploding)!;
-	}
-
-    if (dr.limit != null) {
-        amount += output.printf("%s", *dr.limit)!;
-	}
-
-    if (dr.success != null) {
-        amount += output.printf("%s", *dr.success)!;
-	}
-
-    if (dr.failure != null) {
-        amount += output.printf("f%s", *dr.failure)!;
-	}
-    amount += output.printf("%s", dr.sort)!;
-	return amount;
+	return ( amount += output.printf("%s", dr.sort)!);
 }
 
 // GroupedRoll is a group of other rolls. You can have nested groups.
@@ -409,7 +374,6 @@ fn Result GroupedRoll.roll(GroupedRoll* gr) @dynamic {
 	// 6. If Failure set, apply failure op to results
 	applyFailure(gr.failure, gr.modifier, &result);
 
-	// if(catch (END_OF_ROLL?)) return result;
 	// 7. Add modifier or tally successes
 	finaliseTotals(gr.success, gr.failure, gr.modifier, 1, &result);
 
@@ -428,16 +392,10 @@ fn usz? GroupedRoll.to_format (GroupedRoll* gr, Formatter* formatter) @dynamic =
     List{String} parts;
     parts.tinit();
     
-	foreach (roll : gr.rolls) {
-		if( roll != null) {
-            parts.push( string::format( tmem, "%s",roll));
-		}
-	}
+	foreach (roll : gr.rolls) if(roll) parts.push( string::format( tmem, "%s",roll));
     
     String sep = ", ";
-	if (gr.combined){
-        sep = " + ";
-	}
+	if (gr.combined) sep = " + ";
  
     DString  output;
     output.tinit();
@@ -462,25 +420,11 @@ fn usz? GroupedRoll.to_format (GroupedRoll* gr, Formatter* formatter) @dynamic =
 	output.replace("+ +", "+ ");
 	output.replace("+ -", "- ");
 
-	if (gr.limit != null) {
-        output.appendf("%s", (*(gr.limit)));
-	}
-
-    if (gr.success != null) {
-        output.appendf("%s", (*(gr.success)));
-	}
-
-    if (gr.failure != null) {
-        output.appendf("f%s", (*(gr.failure)));
-	}
-
-    if (gr.modifier) {
-        output.appendf("%+d", (gr.modifier));
-	}
-
-    if (gr.negative) {
-        output.insert_char_at(0,'-');
-	}
+	if (gr.limit != null) output.appendf("%s", (*(gr.limit)));
+    if (gr.success != null) output.appendf("%s", (*(gr.success)));
+    if (gr.failure != null) output.appendf("f%s", (*(gr.failure)));
+    if (gr.modifier) output.appendf("%+d", (gr.modifier));
+    if (gr.negative) output.insert_char_at(0,'-');
 
 	return formatter.printf("%s", output);
 }
@@ -495,33 +439,27 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 
 	// Work out limit
 	int limit = limitOp.amount;
-	if (limit > rolls.results.len()) {
-		limit = (int) rolls.results.len();
-	}
+	if (limit > rolls.results.len()) limit = (int) rolls.results.len();
 
 	switch (limitOp.type) {
-        case KEEP_HIGHEST:
-            while(limit > 0) {
-				rolls.results.last()!!.free();
-                @catch(rolls.results.remove_last());
-                limit--;
-            }
-        case KEEP_LOWEST:
-            while(limit-- > rolls.results.len()) {
-                rolls.results.first()!!.free();
-                @catch(rolls.results.remove_first());
-            }
-        case DROP_HIGHEST:
-            while(limit > 0) {
-				rolls.results.last()!!.free();
-                @catch(rolls.results.remove_last());
-                limit--;
-            }
-        case DROP_LOWEST:
-            while(rolls.results.len() > limit) {
-				rolls.results.last()!!.free();
-				@catch(rolls.results.remove_last());
-			}
+        case KEEP_HIGHEST: while(limit > 0) {
+			rolls.results.last()!!.free();
+            @catch(rolls.results.remove_last());
+            limit--;
+        }
+        case KEEP_LOWEST: while(limit-- > rolls.results.len()) {
+            rolls.results.first()!!.free();
+            @catch(rolls.results.remove_first());
+        }
+        case DROP_HIGHEST: while(limit > 0) {
+			rolls.results.last()!!.free();
+            @catch(rolls.results.remove_last());
+            limit--;
+        }
+        case DROP_LOWEST: while(rolls.results.len() > limit) {
+			rolls.results.last()!!.free();
+			@catch(rolls.results.remove_last());
+		}
 	}
 
     HashMap{int, int} m;
@@ -538,16 +476,15 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
     newResults.tinit(initial_capacity: rolls.results.len());
 	foreach (&a : result.results) {
         int? b = m[a.result];
-        if(try b){
-			newResults.push(*a);
-            b--;
-			if (b == 0) {
-                m.remove(a.result);
-			}
-            else {
-                m.set(a.result, b);
-            }
+        if(catch b) continue;
+		newResults.push(*a);
+        b--;
+		if (b == 0) {
+            m.remove(a.result);
 		}
+        else {
+            m.set(a.result, b);
+        }
 	}
 	
     result.results.free();
@@ -558,66 +495,52 @@ fn void applyLimit(LimitOp* limitOp ,Result* result ) => @pool() {
 fn void applySuccess(ComparisonOp* successOp ,int modifier , Result* result) {
 	if (successOp == null) return;
 
-	foreach (roll : result.results) {
-		if (successOp.match(roll.result + modifier)) {
-			result.successes++;
-		}
+	foreach (roll : result.results)  if (successOp.match(roll.result + modifier)) {
+		result.successes++;
 	}
 }
 
 fn void applyFailure(ComparisonOp* failureOp ,int modifier ,Result* result ) {
     if (failureOp == null) return;
 
-	foreach (roll : result.results) {
-		if (failureOp.match(roll.result + modifier)) {
-			result.successes--;
-		}
+	foreach (roll : result.results) if (failureOp.match(roll.result + modifier)) {
+		result.successes--;
 	}
 }
 
 fn void applySort(SortType sortType,Result* result ) {
 	switch (sortType) {
-        case UNSORTED:
-            return;
-        case ASCENDING:
-            sort(result);
-        case DESCENDING:
-            sort(result, reverse: true);
+    	case ASCENDING:  sort(result);
+    	case DESCENDING: sort(result, reverse: true);
+    	default:  break;
 	}
 }
 
+
 fn void finaliseTotals(ComparisonOp* successOp,ComparisonOp* failureOp ,int modifier,int multiplier ,Result* result ) {
-	if (successOp == null && failureOp == null) {
-		foreach (roll : result.results ){
-			result.total += roll.result;
-		}
-		result.total += modifier;
-		result.total *= multiplier;
-	} else {
+	if ( !(successOp == null && failureOp == null) ){
 		result.total = result.successes;
+		return;
 	}
+	foreach (roll : result.results ) result.total += roll.result;
+	result.total += modifier;
+	result.total *= multiplier;
 }
 
 // insertion stort: https://www.geeksforgeeks.org/insertion-sort-algorithm/
 fn void sort(Result* result, bool reverse = false) {
-    List{DieRoll}* rolls = &result.results;
-    int len = (int) rolls.len();
+    List{DieRoll} rolls = result.results;
+    usz len = rolls.len();
     for(int i =1; i < len; i++){
-        DieRoll key = (*rolls)[i];
+        DieRoll key = rolls[i];
         int j = i-1;
-        
+
         if(reverse){
-            while (j >= 0 && (*rolls)[j].result > key.result) {
-                (*rolls)[(usz)(j + 1)] = (*rolls)[j];
-                j = j - 1;
-            }
+            while (j >= 0 && rolls[j].result > key.result) rolls[(usz)(j + 1)] = rolls[j--];
         } else {
-            while (j >= 0 && (*rolls)[j].result < key.result) {
-                (*rolls)[(usz)(j + 1)] = (*rolls)[j];
-                j = j - 1;
-            }
+            while (j >= 0 && rolls[j].result < key.result) rolls[(usz)(j + 1)] = rolls[j--];
         }
 
-        (*rolls)[(usz)(j + 1)] = key;
+        rolls[(usz)(j + 1)] = key;
     }
 }
