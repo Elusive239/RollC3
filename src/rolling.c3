@@ -1,20 +1,18 @@
 module roll;
 import std::io;
 
-fn String? parse_string(String rollStr, Allocator allocator = mem) {
+fn String? parse_string(String rollStr, Allocator allocator = mem) @inline {
     ByteReader br;
     br.init(rollStr);
     return parse(&br, allocator);
-    // unreachable("IN PROGRESS");
 }
 
 
 fn String? parse(InStream r, Allocator allocator = mem) => @pool() {
     Parser* parser = newParser(r, tmem);
     Roll? roll = parser.parse();
-    if(catch err = roll){
-        return err?;
-    }
+    if(catch err = roll) return err?;
+    
     DString dstr;
     dstr.tinit();
     dstr.appendf("Rolled \"");

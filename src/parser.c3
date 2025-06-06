@@ -30,6 +30,7 @@ macro Parser* newParser(InStream r, Allocator alloc = mem) {
 	parser.alloc.init(alloc, PARSER_DEFAULT_ALLOC);
 	return parser;
 }
+
 // Parse parses a Roll statement.
 fn Roll? Parser.parse(&p) {
 	p.alloc.reset();

@@ -66,10 +66,12 @@ struct TokenScanner{
 
 // NewScanner returns a new instance of scanner
 macro TokenScanner* newScanner(InStream r)  {
-    TokenScanner* scanner = &&((TokenScanner){});
-	// mem::new(TokenScanner);
-    scanner.r = r;
-	return scanner;
+	if (&r.pushback_byte) return &&((TokenScanner){.r = r});
+	DString tmp;
+	tmp.tinit();
+	tmp.read_from_stream(r)!!;
+	ByteReader buffer;
+	return &&((TokenScanner){.r = &(*buffer.init(tmp.str_view()))});
 }
 
 // Scan returns the next token and literal value
