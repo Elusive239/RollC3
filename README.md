@@ -1,7 +1,7 @@
 # RollC3 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Elusive239/rollC3/blob/main/LICENSE) ![Static Badge](https://img.shields.io/badge/C3-darkblue?link=https%3A%2F%2Fc3-lang.org%2F) ![Static Badge](https://img.shields.io/badge/Roll-red?link=https%3A%2F%2Fgithub.com%2Fdarkliquid%2Froll%2Ftree%2Fmaster)
 
 
-A port of a *[Roll20](https://wiki.roll20.net/How_to_Roll_Dice)-like* dice roller, [*Roll*](https://github.com/darkliquid/roll.git) (Originally written in Go by [darkliquid](https://github.com/darkliquid/roll/tree/master)) to [*C3*](https://c3-lang.org/).  
+A port of a *[Roll20](https://wiki.roll20.net/How_to_Roll_Dice)-like* dice roller, [*Roll*](https://github.com/darkliquid/roll.git) (Originally written in Go by [darkliquid](https://github.com/darkliquid)) to [*C3*](https://c3-lang.org/).  
 
 > [!NOTE]  
 > There are some inconsistencies between this dice roller, the original Go version, and Roll20. To have them behave the same requires some major refactoring, But i'm currently very happy where this is. There may be a fork of this in the future that works on that.
