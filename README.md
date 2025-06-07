@@ -29,5 +29,5 @@ Then run `echo "12d6-3" | c3c run` to get something like:
 `Rolled "12d6-3" and got 3, 3, 2, 5, 2, 2, 6, 3, 1, 3, 1, 6 for a total of 34`
 
 Important to note, group rolls require wrapping braces like:  
-`echo "1d6 + 1d6 + 1d6"`    -> fails!  
+`echo "1d6 + 1d6 + 1d6"`    -> fails!     
 `echo "{1d6 + 1d6 + 1d6}"`  -> does not!  

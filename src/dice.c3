@@ -45,7 +45,7 @@ fn DieRoll FateDie.roll(FateDie* d) @dynamic {
 	}
 }
 
-// String returns the string representation of the FateDie 
+// returns the string representation of the FateDie 
 fn String FateDie.to_constant_string(&d) @dynamic =>"dF";
 
 // NormalDie is a die representing an N-sided die
@@ -57,5 +57,16 @@ fn DieRoll NormalDie.roll(NormalDie* d) @dynamic  {
 	return  { val, string::format(mem, "%d", val)};
 }
 
-// String returns the string representation of the NormalDie 
+// returns the string representation of the NormalDie 
 fn usz? NormalDie.to_format(&d, Formatter* formatter) @dynamic => formatter.printf("d%d", *d)!;
+
+typedef IntDie (Die) = int;
+
+// Roll generates a copy of the number as a DieRoll
+fn DieRoll IntDie.roll(IntDie* d) @dynamic  {
+	int val = (int) *d;
+	return  { val, string::format(mem, "%d", val)};
+}
+
+// returns the string representation of the IntDie 
+fn usz? IntDie.to_format(&d, Formatter* formatter) @dynamic => formatter.printf("%d", *d)!;
