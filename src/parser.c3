@@ -230,8 +230,8 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 						// Have to append the roll before we back out! (altered from original)
 						switch{
 							case anyr == null: break;
-							case anyr.type == DiceRoll.typeid :  append_roll(&p.alloc, roll, anyr, DiceRoll);
-							case anyr.type == GroupedRoll.typeid :  append_roll(&p.alloc, roll, anyr, GroupedRoll);
+							case anyr.type == DiceRoll.typeid :  p.append_roll(roll, anyr, DiceRoll);
+							case anyr.type == GroupedRoll.typeid :  p.append_roll(roll, anyr, GroupedRoll);
 							default: unreachable("Unimplemented roll type.");
 						}
 						// We've exited the group, so leave loop by letting error fall
@@ -246,8 +246,8 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 
 		// If we've ended up with a dummy roll for some reason, don't add it (if anyr == null)
 		if (anyr != null) switch(anyr.type){
-			case DiceRoll.typeid :  append_roll(&(p.alloc), roll, anyr, DiceRoll);
-			case GroupedRoll.typeid :  append_roll(&(p.alloc), roll, anyr, GroupedRoll);
+			case DiceRoll.typeid :  p.append_roll(roll, anyr, DiceRoll);
+			case GroupedRoll.typeid :  p.append_roll( roll, anyr, GroupedRoll);
 			//if we get to here, we somehow returned something thats NOT a roll, which we shouldn't be doing...
 			default: return err?;
 		}
@@ -255,10 +255,10 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 	if(err) return err?;
 }
 
-macro void append_roll(Allocator allocator, GroupedRoll* roll, any anyr, $Type) {
+macro void Parser.append_roll(Parser* p, GroupedRoll* roll, any anyr, $Type) {
 	usz elements = roll.rolls.len;
 	usz new_size = Roll.sizeof * (elements + 1);
-	roll.rolls = ((Roll*)allocator::realloc(allocator, (void*) roll.rolls.ptr, new_size))[:elements+1];
+	roll.rolls = ((Roll*)allocator::realloc(&p.alloc, (void*) roll.rolls.ptr, new_size))[:elements+1];
 	roll.rolls[elements]= anycast(anyr, $Type)!!;
 }
 
@@ -272,7 +272,11 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 
 		tlit = p.scanIgnoreWhitespace();
 		if (tlit.first != DIE) {
-			return UNEXPECTED_TOKEN?;
+			p.unscan();
+			roll.die = p.pclone(((IntDie) roll.multiplier));
+			roll.multiplier = 1;
+			return;
+			// return UNEXPECTED_TOKEN?;
 		}
 	} else {
 		roll.multiplier = 1;
