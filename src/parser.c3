@@ -2,7 +2,7 @@ module roll;
 import std::io;
 import std::core::mem::allocator;
 
-const usz PARSER_DEFAULT_ALLOC = 1024;
+const usz PARSER_DEFAULT_ALLOC = 1024/4;
 
 faultdef UNEXPECTED_TOKEN   ;
 faultdef UNKNOWN_DIE        ;
@@ -22,11 +22,11 @@ struct Parser{
 		int    n;
 	}
 	int modifier;
-	DynamicArenaAllocator alloc;
+	DynamicArenaAllocator* alloc;
 }
 
 macro Parser* newParser(InStream r, Allocator alloc = mem) {
-	Parser* parser = && (Parser){.s = newScanner(r), .alloc = {}};
+	Parser* parser = && (Parser){.s = newScanner(r), .alloc = &&(DynamicArenaAllocator){}};
 	parser.alloc.init(alloc, PARSER_DEFAULT_ALLOC);
 	return parser;
 }
@@ -38,37 +38,35 @@ fn Roll? Parser.parse(&p) {
 	TokenLiteral tlit = p.scanIgnoreWhitespace();
 
 	any roll;
-	if(catch err = p.parseRoll(&roll, tlit, false)){
-		if(err == END_OF_ROLL){
-			if(roll.type  == DiceRoll.typeid) {return anycast(roll, DiceRoll);}
-			else if(roll.type  == GroupedRoll.typeid) {return anycast(roll, GroupedRoll);}
-			unreachable("Parse should never return anything that isn't DiceRoll or GroupedRoll...");
-		}
-		return err?;
+	fault err = @catch(p.parseRoll(&roll, tlit, false));
+	if(err != END_OF_ROLL && err != (fault){}) return err?;
+	
+	switch{
+		case roll == null: nextcase default;
+		case roll.type  == DiceRoll.typeid: return (DiceRoll*) roll.ptr;
+		case roll.type  == GroupedRoll.typeid: return (GroupedRoll*) roll.ptr;
+		default: unreachable("Parse should never return anything that isn't DiceRoll or GroupedRoll...");
 	}
-	if(roll.type  == DiceRoll.typeid) {return anycast(roll, DiceRoll);}
-	else if(roll.type  == GroupedRoll.typeid) {return anycast(roll, GroupedRoll);}
-	unreachable("Parse should never return anything that isn't DiceRoll or GroupedRoll...");
 }
 
 // parseRoll gets a roll of any type
 fn void? Parser.parseRoll(&p, any* roll, TokenLiteral tlit, bool grouped) { //(Roll, error) 
+	fault err;
 	switch (tlit.first) {
 		case NUM:
 		case DIE:
 			DiceRoll* rd = p.pclone((DiceRoll){});
-			fault err = @catch(p.parseDiceRoll(rd, grouped));
-			(*roll) = any_make(rd, DiceRoll.typeid);
-			if(err) return err?; 
+			err = @catch(p.parseDiceRoll(rd, grouped));
+			*roll = any_make(rd, DiceRoll.typeid);
 		case GROUPSTART:
 			GroupedRoll* rd = p.pclone((GroupedRoll){});
-			fault err = @catch(p.parseGroupedRoll(rd, grouped));
-			(*roll) = any_make(rd, GroupedRoll.typeid);
-			if(err) return err?; 
+			err = @catch(p.parseGroupedRoll(rd, grouped));
+			*roll = any_make(rd, GroupedRoll.typeid);
 		default:
 			*roll = null;
-			return UNEXPECTED_TOKEN?;
+			err = UNEXPECTED_TOKEN;
 	}
+	if(err) return err?; 
 }
 
  // parseGrouped parses a GroupedRoll statement
@@ -258,7 +256,7 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 macro void Parser.append_roll(Parser* p, GroupedRoll* roll, any anyr, $Type) {
 	usz elements = roll.rolls.len;
 	usz new_size = Roll.sizeof * (elements + 1);
-	roll.rolls = ((Roll*)allocator::realloc(&p.alloc, (void*) roll.rolls.ptr, new_size))[:elements+1];
+	roll.rolls = ((Roll*)allocator::realloc(p.alloc, (void*) roll.rolls.ptr, new_size))[:elements+1];
 	roll.rolls[elements]= anycast(anyr, $Type)!!;
 }
 
@@ -357,7 +355,7 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 			if(try rr){
 				usz elements = roll.rerolls.len;
 				usz new_size = RerollOp.sizeof * (elements + 1);
-				roll.rerolls = ((RerollOp*)allocator::realloc(& p.alloc, (void*) roll.rerolls.ptr, new_size))[:elements+1];
+				roll.rerolls = ((RerollOp*)allocator::realloc(p.alloc, (void*) roll.rerolls.ptr, new_size))[:elements+1];
 				roll.rerolls[elements] = rr;
 			}
 		case GREATER:
@@ -555,7 +553,7 @@ fn TokenLiteral Parser.scan(&p) {
 	}
 
 	// Otherwise read the next token from the scanner.
-	TokenLiteral tlit = p.s.scan(&p.alloc);
+	TokenLiteral tlit = p.s.scan(p.alloc);
 
 	// Save it to the buffer in case we unscan later.
 	p.buf.tlit = tlit;
@@ -578,5 +576,5 @@ fn TokenLiteral Parser.scanIgnoreWhitespace(&p) {
 }
 
 macro Parser.pclone(&p, val) {
-	return allocator::new(&p.alloc, $typeof(val), val);
+	return allocator::new(p.alloc, $typeof(val), val);
 }
