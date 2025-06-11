@@ -13,7 +13,7 @@ struct Parser{
     TokenScanner* s;
 	struct buf {
 		TokenLiteral tlit;
-		int    n;
+		bool    n;
 	}
 	int modifier;
 	DynamicArenaAllocator* alloc;
@@ -503,8 +503,8 @@ fn LimitOp*? Parser.parseLimit(&p, TokenLiteral tlit) { //(lmt *LimitOp, err err
 // If a token has been unscanned then read that instead.
 fn TokenLiteral Parser.scan(&p) {
 	// If we have a token on the buffer, then return it.
-	if (p.buf.n != 0) {
-		p.buf.n = 0;
+	if (p.buf.n ) {
+		p.buf.n = false;
 		return p.buf.tlit;
 	}
 
@@ -519,7 +519,7 @@ fn TokenLiteral Parser.scan(&p) {
 
 // unscan pushes the previously read token back onto the buffer.
 fn void Parser.unscan(&p) {
-    p.buf.n = 1;
+    p.buf.n = true;
 }
 
 // scanIgnoreWhitespace scans the next non-whitespace token.
