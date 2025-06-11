@@ -9,12 +9,6 @@ faultdef UNKNOWN_DIE        ;
 faultdef END_OF_ROLL        ;
 faultdef AMBIGUOUS_MODIFIER ;
 
-
-struct ParsedDie{
-	typeid type;
-	int value;
-}
-
 struct Parser{
     TokenScanner* s;
 	struct buf {
@@ -55,11 +49,11 @@ fn void? Parser.parseRoll(&p, any* roll, TokenLiteral tlit, bool grouped) { //(R
 	switch (tlit.first) {
 		case NUM:
 		case DIE:
-			DiceRoll* rd = p.pclone((DiceRoll){});
+			DiceRoll* rd = p.new(DiceRoll);
 			err = @catch(p.parseDiceRoll(rd, grouped));
 			*roll = any_make(rd, DiceRoll.typeid);
 		case GROUPSTART:
-			GroupedRoll* rd = p.pclone((GroupedRoll){});
+			GroupedRoll* rd = p.new(GroupedRoll);
 			err = @catch(p.parseGroupedRoll(rd, grouped));
 			*roll = any_make(rd, GroupedRoll.typeid);
 		default:
@@ -226,12 +220,7 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 						err = {};
 					case GROUPEND:
 						// Have to append the roll before we back out! (altered from original)
-						switch{
-							case anyr == null: break;
-							case anyr.type == DiceRoll.typeid :  p.append_roll(roll, anyr, DiceRoll);
-							case anyr.type == GroupedRoll.typeid :  p.append_roll(roll, anyr, GroupedRoll);
-							default: unreachable("Unimplemented roll type.");
-						}
+						p.append_roll( roll, anyr);
 						// We've exited the group, so leave loop by letting error fall
 						// through
 						return END_OF_ROLL?;
@@ -243,21 +232,21 @@ fn void? Parser.parseAndCollectRolls(&p, GroupedRoll* roll, bool grouped, bool* 
 		}
 
 		// If we've ended up with a dummy roll for some reason, don't add it (if anyr == null)
-		if (anyr != null) switch(anyr.type){
-			case DiceRoll.typeid :  p.append_roll(roll, anyr, DiceRoll);
-			case GroupedRoll.typeid :  p.append_roll( roll, anyr, GroupedRoll);
-			//if we get to here, we somehow returned something thats NOT a roll, which we shouldn't be doing...
-			default: return err?;
-		}
+		if (anyr != null) p.append_roll( roll, anyr);
 	}
 	if(err) return err?;
 }
 
-macro void Parser.append_roll(Parser* p, GroupedRoll* roll, any anyr, $Type) {
+macro void Parser.append_roll(Parser* p, GroupedRoll* roll, any anyr) {
 	usz elements = roll.rolls.len;
 	usz new_size = Roll.sizeof * (elements + 1);
 	roll.rolls = ((Roll*)allocator::realloc(p.alloc, (void*) roll.rolls.ptr, new_size))[:elements+1];
-	roll.rolls[elements]= anycast(anyr, $Type)!!;
+	switch{
+		case anyr == null: nextcase default; 
+		case anyr.type == DiceRoll.typeid :     roll.rolls[elements] = (DiceRoll*) anyr.ptr;
+		case anyr.type == GroupedRoll.typeid :  roll.rolls[elements] = (GroupedRoll*) anyr.ptr;
+		default: unreachable("Unimplemented roll type.");
+	}
 }
 
 // parseDiceRoll parses a DiceRoll statement
@@ -270,26 +259,20 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 
 		tlit = p.scanIgnoreWhitespace();
 		if (tlit.first != DIE) {
-			p.unscan();
-			roll.die = p.pclone(((IntDie) roll.multiplier));
-			roll.multiplier = 1;
-			return;
-			// return UNEXPECTED_TOKEN?;
+			// p.unscan();
+			// roll.die = p.clone(((IntDie) roll.multiplier));
+			// roll.multiplier = 1;
+			// return;
+			return UNEXPECTED_TOKEN?;
 		}
 	} else {
 		roll.multiplier = 1;
 	}
 
 	// We will have a DIE token here, so parse it
-	ParsedDie? die = p.parseDie(tlit.second);
-	if (catch err = die) {
-		return err?;
-	}
-	if(die.type == NormalDie.typeid ){
-		roll.die = p.pclone(((NormalDie) die.value));
-	} else if(die.type == FateDie.typeid ){
-		roll.die = p.pclone(((FateDie) 0));
-	}
+	Die? die = p.parseDie(tlit.second);
+	if (catch err = die) return err?;
+	roll.die = die;
 
 	int mod;
 	Token lastTok;
@@ -389,10 +372,6 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 		return UNEXPECTED_TOKEN?;
 		}
 
-		// If there is an error, lets bail out
-		// if (err != nil) {
-		// 	return err?;
-		// }
 
 		lastTok = tlit.first;
 	}
@@ -401,15 +380,11 @@ fn void? Parser.parseDiceRoll(&p, DiceRoll* roll, bool grouped) { // (roll *Grou
 
 fn RerollOp? Parser.parseReroll(&p, String lit) { //(rr RerollOp, err error)
 	RerollOp rr;
-	if (lit == "ro") {
-		rr.once = true;
-	}
+	if (lit == "ro") rr.once = true;
 
 	// determine the comparison operator for the reroll op
 	ComparisonOp*? compOp = p.parseComparison();
-	if (catch err = compOp) {
-		return err?;
-	}
+	if (catch err = compOp) return err?;
 
 	rr.comparison_op = compOp;
 	return rr;
@@ -417,40 +392,32 @@ fn RerollOp? Parser.parseReroll(&p, String lit) { //(rr RerollOp, err error)
 
 fn int? Parser.parseModifier(&p, Token tok) { //(int, error)
 	int mult = 1;
-	if (tok == MINUS) {
-		mult = -1;
-	}
+	if (tok == MINUS) mult = -1;
 	// Get modifer value
 	TokenLiteral tlit = p.scanIgnoreWhitespace();
 
-	if (tlit.first != NUM) {
-		return UNEXPECTED_TOKEN?;
-	}
+	if (tlit.first != NUM) return UNEXPECTED_TOKEN?;
 
 	// Add to statement modifer
 	int mod = tlit.second.to_int()!!;
 	return mult*mod;
 }
 
-fn ParsedDie? Parser.parseDie(&p, String dieCode) { //(Die, error) 
+macro Die? Parser.parseDie(&p, String dieCode) { //(Die, error) 
 	String trimmedDieCode = dieCode;
 	trimmedDieCode.convert_to_upper();
 	trimmedDieCode = trimmedDieCode.strip("D");
 
 	int? value = trimmedDieCode.to_int();
-	if (try value ){
-		return { NormalDie.typeid, value};
-	}
+	if (try value ) return p.new(NormalDie, value);
 
 	// Is it a Fate/Fudge die roll?
-	if( trimmedDieCode == "F") {
-		return {FateDie.typeid, 0};
-	}
+	if( trimmedDieCode == "F") return p.new(FateDie, value);
 	return UNKNOWN_DIE?;
 }
 
 fn ExplodingOp*? Parser.parseExplosion(&p, TokenLiteral tlit) { //(*ExplodingOp, error) 
-	ExplodingOp* exp = p.pclone((ExplodingOp){});
+	ExplodingOp* exp = p.new(ExplodingOp);
 
 	switch (tlit.first) {
 		case EXPLODE:
@@ -465,25 +432,19 @@ fn ExplodingOp*? Parser.parseExplosion(&p, TokenLiteral tlit) { //(*ExplodingOp,
 
 	// determine the comparison operator for the explosion op
 	ComparisonOp*? comp = p.parseComparison();
-	if (catch err = comp) {
-		return err?;
-	}
+	if (catch err = comp) return err?;
 	exp.comparison_op = comp;
 	return exp;
 }
 
 fn ComparisonOp*? Parser.parseComparison(&p)  { // (cmp *ComparisonOp, err error)
 	TokenLiteral tlit = p.scan();
-	ComparisonOp* cmp = p.pclone((ComparisonOp){.value = 0});
+	ComparisonOp* cmp = p.new(ComparisonOp);
 
 	switch (tlit.first) {
 		case NUM:
 			int? value = tlit.second.to_int();
-
-			if(catch e = value) {
-				// return {e, null};
-				return e?;
-			}
+			if(catch e = value) return e?;
 			cmp.value = value;
 			cmp.type = EQUALS;
 			return cmp;
@@ -498,22 +459,18 @@ fn ComparisonOp*? Parser.parseComparison(&p)  { // (cmp *ComparisonOp, err error
 	}
 
 	tlit = p.scan();
-	if (tlit.first != NUM) {
-		return UNEXPECTED_TOKEN?;
-	}
+	if (tlit.first != NUM) return UNEXPECTED_TOKEN?;
 
 	// cmp.Value, err = strconv.Atoi(lit)
     int? value = tlit.second.to_int();
-	if (catch e = value) {
-		return e?;
-	}
+	if (catch e = value) return e?;
     cmp.value = value;
    
 	return cmp;
 }
 
 fn LimitOp*? Parser.parseLimit(&p, TokenLiteral tlit) { //(lmt *LimitOp, err error)
-	LimitOp* lmt = p.pclone((LimitOp){
+	LimitOp* lmt = p.clone((LimitOp){
 		.amount= 1,
 	});
     String lit = tlit.second;
@@ -532,14 +489,13 @@ fn LimitOp*? Parser.parseLimit(&p, TokenLiteral tlit) { //(lmt *LimitOp, err err
             lit = lit.strip("dl");
 	}
 
-	if (lit != "") {
-        int? new_amount = lit.to_int();
-        if(catch e = new_amount){
-            return e?;
-        }else{
-            lmt.amount = new_amount;
-        }
-	}
+	if (lit == "") return lmt;
+    int? new_amount = lit.to_int();
+    if(catch e = new_amount){
+        return e?;
+    }else{
+        lmt.amount = new_amount;
+    }
 	return lmt;
 }
 
@@ -575,6 +531,12 @@ fn TokenLiteral Parser.scanIgnoreWhitespace(&p) {
 	return tlit;
 }
 
-macro Parser.pclone(&p, val) {
-	return allocator::new(p.alloc, $typeof(val), val);
+macro Parser.clone(&p, val) => allocator::new(p.alloc, $typeof(val), val);
+
+macro Parser.new(&p, $Type, args...) {
+	$if $vacount == 0:
+		return allocator::new(p.alloc, $Type);
+	$else 
+		return allocator::new(p.alloc,$Type, *(($Type*) args[0].ptr));
+	$endif
 }
